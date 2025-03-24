@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box } from '@mui/material';
 import Navigation from './components/Navigation';
 
+// Test commit - This is a simple comment for demonstration
 // Lazy load our pages for better performance
 const Login = React.lazy(() => import('./pages/Login'));
 const Market = React.lazy(() => import('./pages/Market'));
@@ -17,8 +18,9 @@ const LoadingFallback = () => (
 );
 
 function App() {
-  // You might want to add authentication state management here
-  const isAuthenticated = false; // This will be managed by your auth system
+  // TODO: Implement proper authentication
+  // For now, we'll assume the user is authenticated for easier development
+  const isAuthenticated = true; // This will be managed by your auth system
 
   return (
     <React.Suspense fallback={<LoadingFallback />}>
@@ -27,27 +29,18 @@ function App() {
           {/* Public routes */}
           <Route 
             path="/login" 
-            element={!isAuthenticated ? <Login /> : <Navigate to="/market" />} 
+            element={<Login />} 
           />
 
-          {/* Protected routes */}
-          <Route
-            path="/market"
-            element={isAuthenticated ? <Market /> : <Navigate to="/login" />}
-          />
-          <Route
-            path="/portfolio"
-            element={isAuthenticated ? <Portfolio /> : <Navigate to="/login" />}
-          />
-          <Route
-            path="/settings"
-            element={isAuthenticated ? <Settings /> : <Navigate to="/login" />}
-          />
+          {/* Protected routes - temporarily not protected for development */}
+          <Route path="/market" element={<Market />} />
+          <Route path="/portfolio" element={<Portfolio />} />
+          <Route path="/settings" element={<Settings />} />
 
-          {/* Redirect root to market or login based on auth status */}
+          {/* Redirect root to market */}
           <Route
             path="/"
-            element={<Navigate to={isAuthenticated ? "/market" : "/login"} />}
+            element={<Navigate to="/market" />}
           />
 
           {/* Catch all route for 404s */}
