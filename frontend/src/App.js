@@ -1,14 +1,14 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
 import { Box } from '@mui/material';
+import theme from './theme';
 import Navigation from './components/Navigation';
-
-// Test commit - This is a simple comment for demonstration
-// Lazy load our pages for better performance
-const Login = React.lazy(() => import('./pages/Login'));
-const Market = React.lazy(() => import('./pages/Market'));
-const Portfolio = React.lazy(() => import('./pages/Portfolio'));
-const Settings = React.lazy(() => import('./pages/Settings'));
+import Login from './pages/Login';
+import Market from './pages/Market';
+import Portfolio from './pages/Portfolio';
+import Settings from './pages/Settings';
 
 // Loading component for lazy-loaded routes
 const LoadingFallback = () => (
@@ -23,31 +23,28 @@ function App() {
   const isAuthenticated = true; // This will be managed by your auth system
 
   return (
-    <React.Suspense fallback={<LoadingFallback />}>
-      <Navigation>
-        <Routes>
-          {/* Public routes */}
-          <Route 
-            path="/login" 
-            element={<Login />} 
-          />
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router>
+        <Navigation>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
 
-          {/* Protected routes - temporarily not protected for development */}
-          <Route path="/market" element={<Market />} />
-          <Route path="/portfolio" element={<Portfolio />} />
-          <Route path="/settings" element={<Settings />} />
+            {/* Protected routes - temporarily not protected for development */}
+            <Route path="/market" element={<Market />} />
+            <Route path="/portfolio" element={<Portfolio />} />
+            <Route path="/settings" element={<Settings />} />
 
-          {/* Redirect root to market */}
-          <Route
-            path="/"
-            element={<Navigate to="/market" />}
-          />
+            {/* Redirect root to market */}
+            <Route path="/" element={<Navigate to="/market" replace />} />
 
-          {/* Catch all route for 404s */}
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </Navigation>
-    </React.Suspense>
+            {/* Catch all route for 404s */}
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </Navigation>
+      </Router>
+    </ThemeProvider>
   );
 }
 
