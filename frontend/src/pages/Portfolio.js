@@ -25,6 +25,10 @@ import {
   CircularProgress,
   Autocomplete,
   Snackbar,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon, Refresh as RefreshIcon, Edit as EditIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -38,7 +42,8 @@ const Portfolio = () => {
   const [portfolio, setPortfolio] = useState(null);
   const [currentPrices, setCurrentPrices] = useState({});
   const [performance, setPerformance] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
+  const [openAddDialog, setOpenAddDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -55,6 +60,9 @@ const Portfolio = () => {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [editingHoldingId, setEditingHoldingId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('value');
+  const [sortDir, setSortDir] = useState('desc');
 
   // Check if user is authenticated
   useEffect(() => {
@@ -145,16 +153,19 @@ const Portfolio = () => {
   // Fetch available cryptocurrencies when dialog opens
   useEffect(() => {
     const fetchAvailableCryptos = async () => {
-      if (openDialog) {
+      if (openAddDialog) {
         try {
           setLoadingCryptos(true);
           const cryptos = await MarketService.getListings({ limit: 100 });
-          setAvailableCryptos(cryptos.map(crypto => ({
+          // Format the cryptocurrency data for the dropdown
+          const formattedCryptos = cryptos.map(crypto => ({
             id: crypto.id,
             name: crypto.name,
             symbol: crypto.symbol,
             price: crypto.quote.USD.price
-          })));
+          }));
+          console.log('Fetched cryptocurrencies:', formattedCryptos.length);
+          setAvailableCryptos(formattedCryptos);
         } catch (error) {
           console.error('Error fetching available cryptocurrencies:', error);
           setError('Failed to load cryptocurrencies. Please try again.');
@@ -165,48 +176,13 @@ const Portfolio = () => {
     };
 
     fetchAvailableCryptos();
-  }, [openDialog]);
+  }, [openAddDialog]);
 
-  const handleOpenDialog = (holding = null) => {
-    setOpenDialog(true);
+  const handleOpenAddDialog = () => {
+    setOpenAddDialog(true);
     setError(null);
     
-    if (holding) {
-      // Set editing mode
-      setIsEditing(true);
-      setEditingHoldingId(holding._id);
-      
-      // Format date from ISO string to YYYY-MM-DD
-      const purchaseDate = new Date(holding.purchaseDate).toISOString().split('T')[0];
-      
-      // Populate form with holding data
-      setTransactionForm({
-        cryptoId: holding.cryptoId,
-        name: holding.name,
-        symbol: holding.symbol,
-        amount: holding.amount.toString(),
-        purchasePrice: holding.purchasePrice.toString(),
-        purchaseDate: purchaseDate,
-        notes: holding.notes || '',
-      });
-    } else {
-      // Add mode
-      setIsEditing(false);
-      setEditingHoldingId(null);
-      setTransactionForm({
-        cryptoId: '',
-        name: '',
-        symbol: '',
-        amount: '',
-        purchasePrice: '',
-        purchaseDate: new Date().toISOString().split('T')[0],
-        notes: '',
-      });
-    }
-  };
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
+    // Reset form
     setTransactionForm({
       cryptoId: '',
       name: '',
@@ -216,7 +192,41 @@ const Portfolio = () => {
       purchaseDate: new Date().toISOString().split('T')[0],
       notes: '',
     });
-    setIsEditing(false);
+  };
+
+  const handleOpenEditDialog = (holding) => {
+    setOpenEditDialog(true);
+    setError(null);
+    setEditingHoldingId(holding._id);
+    
+    // Use a default date if purchase date is invalid
+    let safeDate = new Date().toISOString().split('T')[0];
+    try {
+      if (holding.purchaseDate) {
+        const date = new Date(holding.purchaseDate);
+        if (!isNaN(date.getTime())) {
+          safeDate = date.toISOString().split('T')[0];
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing date:', error);
+    }
+    
+    // Populate form with holding data with safe fallbacks
+    setTransactionForm({
+      cryptoId: holding.cryptoId || '',
+      name: holding.name || '',
+      symbol: holding.symbol || '',
+      amount: typeof holding.amount === 'number' ? holding.amount.toString() : '',
+      purchasePrice: typeof holding.purchasePrice === 'number' ? holding.purchasePrice.toString() : '',
+      purchaseDate: safeDate,
+      notes: holding.notes || '',
+    });
+  };
+
+  const handleCloseDialogs = () => {
+    setOpenAddDialog(false);
+    setOpenEditDialog(false);
     setEditingHoldingId(null);
     setError(null);
   };
@@ -245,8 +255,8 @@ const Portfolio = () => {
     try {
       setError(null);
       
-      // Validate form data
-      if (!transactionForm.cryptoId || !transactionForm.name || !transactionForm.symbol) {
+      // Different validation for add vs edit
+      if (openAddDialog && (!transactionForm.cryptoId || !transactionForm.name || !transactionForm.symbol)) {
         setError('Please select a cryptocurrency');
         return;
       }
@@ -270,7 +280,7 @@ const Portfolio = () => {
       
       let updatedPortfolio;
       
-      if (isEditing) {
+      if (openEditDialog) {
         // Update existing holding
         updatedPortfolio = await PortfolioService.updateHolding(editingHoldingId, holdingData);
         setSuccess('Holding updated successfully!');
@@ -285,10 +295,10 @@ const Portfolio = () => {
       // Refresh prices and performance
       await fetchPricesForHoldings(updatedPortfolio.holdings);
       
-      handleCloseDialog();
+      handleCloseDialogs();
       
     } catch (error) {
-      const actionType = isEditing ? 'update' : 'add';
+      const actionType = openEditDialog ? 'update' : 'add';
       setError(`Failed to ${actionType} holding. Please try again.`);
       console.error(`Error ${actionType} holding:`, error);
     }
@@ -323,6 +333,64 @@ const Portfolio = () => {
 
   const handleCloseSnackbar = () => {
     setSuccess(null);
+  };
+
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleSortChange = (e) => {
+    setSortBy(e.target.value);
+  };
+
+  const handleSortDirChange = (e) => {
+    setSortDir(e.target.value);
+  };
+
+  const getFilteredAndSortedHoldings = () => {
+    if (!performance || !performance.holdings) return [];
+
+    // First filter by search term
+    const filtered = performance.holdings.filter(holding => 
+      holding.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      holding.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Then sort based on selected criteria
+    return filtered.sort((a, b) => {
+      let comparison = 0;
+      
+      switch(sortBy) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'symbol':
+          comparison = a.symbol.localeCompare(b.symbol);
+          break;
+        case 'amount':
+          comparison = a.amount - b.amount;
+          break;
+        case 'purchasePrice':
+          comparison = a.purchasePrice - b.purchasePrice;
+          break;
+        case 'currentPrice':
+          comparison = a.currentPrice - b.currentPrice;
+          break;
+        case 'value':
+          comparison = a.holdingValue - b.holdingValue;
+          break;
+        case 'profit':
+          comparison = a.profit - b.profit;
+          break;
+        case 'date':
+          comparison = new Date(a.purchaseDate) - new Date(b.purchaseDate);
+          break;
+        default:
+          comparison = a.holdingValue - b.holdingValue;
+      }
+      
+      return sortDir === 'desc' ? -comparison : comparison;
+    });
   };
 
   if (!currentUser) {
@@ -409,7 +477,7 @@ const Portfolio = () => {
                 <Button
                   variant="contained"
                   startIcon={<AddIcon />}
-                  onClick={handleOpenDialog}
+                  onClick={handleOpenAddDialog}
                   fullWidth
                 >
                   Add Holding
@@ -429,64 +497,117 @@ const Portfolio = () => {
             You don't have any holdings yet. Add your first holding to get started.
           </Alert>
         ) : (
-          <TableContainer component={Paper} sx={{ mt: 2 }}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Asset</TableCell>
-                  <TableCell align="right">Amount</TableCell>
-                  <TableCell align="right">Purchase Price</TableCell>
-                  <TableCell align="right">Current Price</TableCell>
-                  <TableCell align="right">Value</TableCell>
-                  <TableCell align="right">Profit/Loss</TableCell>
-                  <TableCell align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {performance?.holdings.map((holding) => (
-                  <TableRow key={holding._id}>
-                    <TableCell>
-                      {holding.name} ({holding.symbol})
-                    </TableCell>
-                    <TableCell align="right">{holding.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</TableCell>
-                    <TableCell align="right">${holding.purchasePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                    <TableCell align="right">${holding.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                    <TableCell align="right">${holding.holdingValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                    <TableCell 
-                      align="right"
-                      sx={{ color: holding.profit >= 0 ? 'success.main' : 'error.main' }}
-                    >
-                      ${holding.profit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({holding.profitPercentage.toFixed(2)}%)
-                    </TableCell>
-                    <TableCell align="right">
-                      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <IconButton 
-                          size="small" 
-                          color="primary"
-                          onClick={() => handleOpenDialog(holding)}
-                          sx={{ mr: 1 }}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton 
-                          size="small" 
-                          color="error"
-                          onClick={() => handleDeleteHolding(holding._id)}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <>
+            {/* Search and Sort Controls */}
+            <Box sx={{ mb: 3, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-end', flexGrow: 1 }}>
+                <TextField
+                  fullWidth
+                  label="Search assets"
+                  variant="standard"
+                  value={searchTerm}
+                  onChange={handleSearch}
+                  placeholder="Search by name or symbol"
+                />
+              </Box>
+              
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <FormControl variant="standard" sx={{ minWidth: 120 }}>
+                  <InputLabel>Sort By</InputLabel>
+                  <Select value={sortBy} onChange={handleSortChange}>
+                    <MenuItem value="name">Name</MenuItem>
+                    <MenuItem value="symbol">Symbol</MenuItem>
+                    <MenuItem value="amount">Amount</MenuItem>
+                    <MenuItem value="purchasePrice">Purchase Price</MenuItem>
+                    <MenuItem value="currentPrice">Current Price</MenuItem>
+                    <MenuItem value="value">Value</MenuItem>
+                    <MenuItem value="profit">Profit/Loss</MenuItem>
+                    <MenuItem value="date">Purchase Date</MenuItem>
+                  </Select>
+                </FormControl>
+                
+                <FormControl variant="standard" sx={{ minWidth: 120 }}>
+                  <InputLabel>Order</InputLabel>
+                  <Select value={sortDir} onChange={handleSortDirChange}>
+                    <MenuItem value="desc">Descending</MenuItem>
+                    <MenuItem value="asc">Ascending</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+            </Box>
+
+            {/* Get filtered and sorted holdings */}
+            {(() => {
+              const filteredAndSortedHoldings = getFilteredAndSortedHoldings();
+              
+              return filteredAndSortedHoldings.length === 0 ? (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  No holdings match your search criteria.
+                </Alert>
+              ) : (
+                <TableContainer component={Paper} sx={{ mt: 2 }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Asset</TableCell>
+                        <TableCell align="right">Amount</TableCell>
+                        <TableCell align="right">Purchase Price</TableCell>
+                        <TableCell align="right">Purchase Date</TableCell>
+                        <TableCell align="right">Current Price</TableCell>
+                        <TableCell align="right">Value</TableCell>
+                        <TableCell align="right">Profit/Loss</TableCell>
+                        <TableCell align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredAndSortedHoldings.map((holding) => (
+                        <TableRow key={holding._id}>
+                          <TableCell>
+                            {holding.name} ({holding.symbol})
+                          </TableCell>
+                          <TableCell align="right">{holding.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</TableCell>
+                          <TableCell align="right">${holding.purchasePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell align="right">{new Date(holding.purchaseDate).toLocaleDateString()}</TableCell>
+                          <TableCell align="right">${holding.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell align="right">${holding.holdingValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell 
+                            align="right"
+                            sx={{ color: holding.profit >= 0 ? 'success.main' : 'error.main' }}
+                          >
+                            ${holding.profit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({holding.profitPercentage.toFixed(2)}%)
+                          </TableCell>
+                          <TableCell align="right">
+                            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                              <IconButton 
+                                size="small" 
+                                color="primary"
+                                onClick={() => handleOpenEditDialog(holding)}
+                                sx={{ mr: 1 }}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton 
+                                size="small" 
+                                color="error"
+                                onClick={() => handleDeleteHolding(holding._id)}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              );
+            })()}
+          </>
         )}
 
-        {/* Add/Edit Holding Dialog */}
-        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-          <DialogTitle>{isEditing ? 'Edit Holding' : 'Add New Holding'}</DialogTitle>
+        {/* Add New Holding Dialog */}
+        <Dialog open={openAddDialog} onClose={handleCloseDialogs} maxWidth="sm" fullWidth>
+          <DialogTitle>Add New Holding</DialogTitle>
           <DialogContent>
             {error && (
               <Alert severity="error" sx={{ mb: 2, mt: 1 }}>
@@ -496,11 +617,11 @@ const Portfolio = () => {
             
             <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Autocomplete
+                id="crypto-select"
                 options={availableCryptos}
-                getOptionLabel={(option) => `${option.name} (${option.symbol})`}
+                getOptionLabel={(option) => option ? `${option.name || ''} (${option.symbol || ''})` : ''}
                 onChange={handleCryptoSelect}
                 loading={loadingCryptos}
-                disabled={isEditing} // Disable cryptocurrency selection when editing
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -518,16 +639,90 @@ const Portfolio = () => {
                     }}
                   />
                 )}
-                renderOption={(props, option) => {
-                  const { key, ...otherProps } = props;
-                  return (
-                    <Box component="li" key={key} {...otherProps}>
-                      {option.name} ({option.symbol}) - ${option.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </Box>
-                  );
-                }}
-                value={availableCryptos.find(crypto => crypto.symbol === transactionForm.symbol) || null}
-                isOptionEqualToValue={(option, value) => option.symbol === value.symbol}
+                renderOption={(props, option) => (
+                  <li {...props}>
+                    {option.name} ({option.symbol}) - ${option.price.toFixed(2)}
+                  </li>
+                )}
+              />
+              
+              <TextField
+                name="amount"
+                label="Amount"
+                type="number"
+                fullWidth
+                value={transactionForm.amount}
+                onChange={handleFormChange}
+                required
+                inputProps={{ step: 'any', min: "0.00000001" }}
+                helperText="Enter the quantity of cryptocurrency you own"
+              />
+              <TextField
+                name="purchasePrice"
+                label="Purchase Price"
+                type="number"
+                fullWidth
+                value={transactionForm.purchasePrice}
+                onChange={handleFormChange}
+                required
+                inputProps={{ step: 'any', min: "0.00000001" }}
+                helperText="Enter the price per unit when purchased"
+              />
+              <TextField
+                name="purchaseDate"
+                label="Purchase Date"
+                type="date"
+                fullWidth
+                value={transactionForm.purchaseDate}
+                onChange={handleFormChange}
+                required
+                InputLabelProps={{ shrink: true }}
+                helperText="When did you purchase this cryptocurrency?"
+              />
+              <TextField
+                name="notes"
+                label="Notes"
+                type="text"
+                fullWidth
+                multiline
+                rows={3}
+                value={transactionForm.notes}
+                onChange={handleFormChange}
+                helperText="Optional notes about this holding"
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDialogs}>Cancel</Button>
+            <Button 
+              onClick={handleSaveHolding} 
+              variant="contained" 
+              color="primary"
+              disabled={!transactionForm.name || !transactionForm.amount || !transactionForm.purchasePrice}
+            >
+              Add Holding
+            </Button>
+          </DialogActions>
+        </Dialog>
+        
+        {/* Edit Holding Dialog */}
+        <Dialog open={openEditDialog} onClose={handleCloseDialogs} maxWidth="sm" fullWidth>
+          <DialogTitle>Edit Holding</DialogTitle>
+          <DialogContent>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2, mt: 1 }}>
+                {error}
+              </Alert>
+            )}
+            
+            <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField
+                disabled
+                fullWidth
+                label="Cryptocurrency"
+                value={`${transactionForm.name} (${transactionForm.symbol})`}
+                InputLabelProps={{ shrink: true }}
+                helperText="Cannot change cryptocurrency when editing"
               />
               <TextField
                 name="amount"
@@ -576,14 +771,14 @@ const Portfolio = () => {
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleCloseDialog}>Cancel</Button>
+            <Button onClick={handleCloseDialogs}>Cancel</Button>
             <Button 
               onClick={handleSaveHolding} 
               variant="contained" 
               color="primary"
-              disabled={!transactionForm.name || !transactionForm.amount || !transactionForm.purchasePrice}
+              disabled={!transactionForm.amount || !transactionForm.purchasePrice}
             >
-              {isEditing ? 'Update Holding' : 'Add Holding'}
+              Update Holding
             </Button>
           </DialogActions>
         </Dialog>
