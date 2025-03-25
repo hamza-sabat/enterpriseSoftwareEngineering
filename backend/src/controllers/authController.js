@@ -4,13 +4,12 @@ const logger = require('../utils/logger');
 class AuthController {
     async register(req, res) {
         try {
-            const { email, password, firstName, lastName } = req.body;
+            const { email, password, name } = req.body;
             
             const result = await authService.registerUser({
                 email,
                 password,
-                firstName,
-                lastName
+                name
             });
             
             res.status(201).json(result);
@@ -50,6 +49,19 @@ class AuthController {
         } catch (error) {
             logger.error('Failed to update user settings', { error: error.message });
             res.status(400).json({ error: error.message });
+        }
+    }
+
+    async updateUserProfile(req, res) {
+        try {
+            const { name, email } = req.body;
+            const userData = { name, email };
+            
+            const user = await authService.updateUserProfile(req.user.id, userData);
+            res.json(user);
+        } catch (error) {
+            logger.error('Failed to update user profile', { error: error.message, userId: req.user.id });
+            res.status(500).json({ error: error.message });
         }
     }
 }

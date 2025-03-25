@@ -117,15 +117,25 @@ function Settings() {
     try {
       // Only update profile details (not password)
       const profileData = {
-        name: userForm.name,
+        name: userForm.name !== undefined ? userForm.name : '',
         email: userForm.email,
       };
 
+      console.log('Submitting profile data:', profileData);
+      
       const updatedUser = await authService.updateUserProfile(profileData);
+      console.log('Profile update successful:', updatedUser);
+      
+      // Make sure we update the context with the latest user data
       updateUserProfile(updatedUser);
+      
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
     } catch (error) {
-      setMessage({ type: 'error', text: error.message || 'Failed to update profile.' });
+      console.error('Profile update failed:', error);
+      setMessage({ 
+        type: 'error', 
+        text: error.message || 'Failed to update profile. Please try again.' 
+      });
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const { generateToken } = require('../middleware/auth');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
 
 class AuthService {
     async registerUser(userData) {
@@ -18,9 +18,9 @@ class AuthService {
             const token = generateToken(user);
 
             // Return user data without password
-            const userResponse = user.toPublicJSON();
+            const userResponse = user.toJSON();
             
-            logger.info('User registered successfully', { userId: user._id });
+            logger.info('User registered successfully', { userId: user.id });
             return { user: userResponse, token };
         } catch (error) {
             logger.error('Error in registerUser service', { error: error.message });
@@ -46,9 +46,9 @@ class AuthService {
             const token = generateToken(user);
 
             // Return user data without password
-            const userResponse = user.toPublicJSON();
+            const userResponse = user.toJSON();
             
-            logger.info('User logged in successfully', { userId: user._id });
+            logger.info('User logged in successfully', { userId: user.id });
             return { user: userResponse, token };
         } catch (error) {
             logger.error('Error in loginUser service', { error: error.message });
@@ -62,7 +62,7 @@ class AuthService {
             if (!user) {
                 throw new Error('User not found');
             }
-            return user.toPublicJSON();
+            return user.toJSON();
         } catch (error) {
             logger.error('Error in getUserById service', { error: error.message });
             throw error;
@@ -81,9 +81,29 @@ class AuthService {
                 throw new Error('User not found');
             }
             
-            return user.toPublicJSON();
+            return user.toJSON();
         } catch (error) {
             logger.error('Error in updateUserSettings service', { error: error.message });
+            throw error;
+        }
+    }
+
+    async updateUserProfile(userId, userData) {
+        try {
+            const user = await User.findByIdAndUpdate(
+                userId,
+                { $set: userData },
+                { new: true, runValidators: true }
+            );
+            
+            if (!user) {
+                throw new Error('User not found');
+            }
+            
+            logger.info('User profile updated successfully', { userId });
+            return user.toJSON();
+        } catch (error) {
+            logger.error('Error in updateUserProfile service', { error: error.message });
             throw error;
         }
     }

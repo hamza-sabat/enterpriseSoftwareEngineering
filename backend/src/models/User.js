@@ -16,6 +16,9 @@ const userSchema = new mongoose.Schema({
     minlength: [8, 'Password must be at least 8 characters long'],
     validate: {
       validator: function(value) {
+        // Only validate password if it's being modified or is new
+        if (!this.isModified('password')) return true;
+
         // Password must contain at least one uppercase letter, one lowercase letter,
         // one number and one special character
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -53,7 +56,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
+    enum: ['user'],
     default: 'user'
   },
   createdAt: {
@@ -92,11 +95,27 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 };
 
 // Method to return user data without sensitive information
-userSchema.methods.toPublic = function() {
+userSchema.methods.toPublicJSON = function() {
   const userObject = this.toObject();
   delete userObject.password;
   return userObject;
 };
+
+// Create a virtual for the ID that can be included in JSON responses
+userSchema.virtual('id').get(function() {
+  return this._id.toHexString();
+});
+
+// Ensure virtual fields are serialized
+userSchema.set('toJSON', {
+  virtuals: true,
+  transform: (doc, ret) => {
+    delete ret._id;
+    delete ret.__v;
+    delete ret.password;
+    return ret;
+  }
+});
 
 const User = mongoose.model('User', userSchema);
 
