@@ -1,23 +1,38 @@
 const { logger } = require('./utils/logger');
 const app = require('./app');
 
-// Start the server
+// Load environment variables
+require('dotenv').config();
+
+// Set port (default: 3001)
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  logger.info(`Server is running on port ${PORT}`);
-  logger.info(`Environment: ${process.env.NODE_ENV}`);
-});
+
+// Try to start the server with alternative port if in use
+const startServer = (port) => {
+  app.listen(port, () => {
+    logger.info(`Server running on port ${port}`);
+  }).on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      logger.warn(`Port ${port} is already in use, trying port ${port + 1}`);
+      startServer(port + 1);
+    } else {
+      logger.error('Error starting server:', error);
+      process.exit(1);
+    }
+  });
+};
+
+// Start the server
+startServer(PORT);
 
 // Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-  logger.error('Uncaught Exception:', err);
-  // Perform any cleanup if needed
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error);
   process.exit(1);
 });
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-  logger.error('Unhandled Rejection:', err);
-  // Perform any cleanup if needed
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
   process.exit(1);
 }); 
