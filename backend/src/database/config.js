@@ -1,42 +1,40 @@
-const { Pool } = require('pg');
+const mongoose = require('mongoose');
+const { logger } = require('../utils/logger');
 require('dotenv').config();
 
-// Database configuration
-const dbConfig = {
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: parseInt(process.env.DB_PORT || '5432'),
-  // Connection pool settings
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // How long a client is allowed to remain idle before being closed
-  connectionTimeoutMillis: 2000, // How long to wait before timing out when connecting a new client
-  ssl: process.env.NODE_ENV === 'production' ? {
-    rejectUnauthorized: false
-  } : false
+// MongoDB connection string
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/crypto_portfolio';
+
+// MongoDB connection options
+const mongoOptions = {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
 };
 
-// Create a new pool instance
-const pool = new Pool(dbConfig);
+// Connect to MongoDB
+mongoose.connect(MONGODB_URI, mongoOptions)
+  .then(() => {
+    logger.info('Connected to MongoDB Atlas successfully');
+  })
+  .catch((err) => {
+    logger.error(`MongoDB connection error: ${err}`);
+    process.exit(1);
+  });
 
-// Pool error handling
-pool.on('error', (err, client) => {
-  console.error('Unexpected error on idle client', err);
-  process.exit(-1);
+// Handle connection events
+mongoose.connection.on('error', (err) => {
+  logger.error(`MongoDB connection error: ${err}`);
 });
 
-// Test the connection
-pool.query('SELECT NOW()', (err, res) => {
-  if (err) {
-    console.error('Error connecting to the database', err);
-  } else {
-    console.log('Database connected successfully');
-  }
+mongoose.connection.on('disconnected', () => {
+  logger.warn('MongoDB disconnected');
 });
 
-module.exports = {
-  query: (text, params) => pool.query(text, params),
-  getClient: () => pool.connect(),
-  pool
-}; 
+// If Node process ends, close the MongoDB connection
+process.on('SIGINT', async () => {
+  await mongoose.connection.close();
+  logger.info('MongoDB connection closed due to app termination');
+  process.exit(0);
+});
+
+module.exports = mongoose; 

@@ -1,152 +1,132 @@
-const db = require('../database/config');
+const mongoose = require('mongoose');
+const { logger } = require('./logger');
 
 /**
- * Execute a transaction with the given queries
- * @param {Array<{text: string, values: Array<any>}>} queries - Array of query objects
- * @returns {Promise<Array<any>>} - Results of the queries
+ * Run a function within a MongoDB session transaction
+ * @param {Function} callback - Async function that runs within the transaction
+ * @returns {Promise<any>} - Result of the callback function
  */
-async function executeTransaction(queries) {
-  const client = await db.getClient();
+async function runTransaction(callback) {
+  const session = await mongoose.startSession();
+  
   try {
-    await client.query('BEGIN');
-    const results = [];
-    
-    for (const query of queries) {
-      const result = await client.query(query.text, query.values);
-      results.push(result);
-    }
-    
-    await client.query('COMMIT');
-    return results;
-  } catch (e) {
-    await client.query('ROLLBACK');
-    throw e;
+    session.startTransaction();
+    const result = await callback(session);
+    await session.commitTransaction();
+    return result;
+  } catch (error) {
+    await session.abortTransaction();
+    logger.error(`Transaction error: ${error.message}`);
+    throw error;
   } finally {
-    client.release();
+    session.endSession();
   }
 }
 
 /**
- * Insert a record into the specified table
- * @param {string} table - Table name
+ * Create a new document in the specified model
+ * @param {mongoose.Model} model - Mongoose model
  * @param {Object} data - Data to insert
- * @returns {Promise<any>} - Inserted record
+ * @returns {Promise<mongoose.Document>} - Created document
  */
-async function insertRecord(table, data) {
-  const columns = Object.keys(data);
-  const values = Object.values(data);
-  const placeholders = values.map((_, i) => `$${i + 1}`);
-  
-  const query = {
-    text: `
-      INSERT INTO ${table} (${columns.join(', ')})
-      VALUES (${placeholders.join(', ')})
-      RETURNING *
-    `,
-    values
-  };
-  
-  const result = await db.query(query.text, query.values);
-  return result.rows[0];
+async function createDocument(model, data) {
+  try {
+    const newDocument = new model(data);
+    await newDocument.save();
+    return newDocument;
+  } catch (error) {
+    logger.error(`Error creating document: ${error.message}`);
+    throw error;
+  }
 }
 
 /**
- * Update a record in the specified table
- * @param {string} table - Table name
- * @param {string} id - Record ID
- * @param {Object} data - Data to update
- * @returns {Promise<any>} - Updated record
+ * Find document by ID
+ * @param {mongoose.Model} model - Mongoose model
+ * @param {string} id - Document ID
+ * @returns {Promise<mongoose.Document>} - Found document
  */
-async function updateRecord(table, id, data) {
-  const columns = Object.keys(data);
-  const values = Object.values(data);
-  const setClause = columns.map((col, i) => `${col} = $${i + 1}`).join(', ');
-  
-  const query = {
-    text: `
-      UPDATE ${table}
-      SET ${setClause}
-      WHERE id = $${values.length + 1}
-      RETURNING *
-    `,
-    values: [...values, id]
-  };
-  
-  const result = await db.query(query.text, query.values);
-  return result.rows[0];
+async function findById(model, id) {
+  try {
+    const document = await model.findById(id);
+    return document;
+  } catch (error) {
+    logger.error(`Error finding document by ID: ${error.message}`);
+    throw error;
+  }
 }
 
 /**
- * Delete a record from the specified table
- * @param {string} table - Table name
- * @param {string} id - Record ID
+ * Update document by ID
+ * @param {mongoose.Model} model - Mongoose model
+ * @param {string} id - Document ID
+ * @param {Object} data - Update data
+ * @returns {Promise<mongoose.Document>} - Updated document
+ */
+async function updateById(model, id, data) {
+  try {
+    const updatedDocument = await model.findByIdAndUpdate(
+      id,
+      { $set: data },
+      { new: true, runValidators: true }
+    );
+    return updatedDocument;
+  } catch (error) {
+    logger.error(`Error updating document: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Delete document by ID
+ * @param {mongoose.Model} model - Mongoose model
+ * @param {string} id - Document ID
  * @returns {Promise<boolean>} - Success status
  */
-async function deleteRecord(table, id) {
-  const query = {
-    text: `DELETE FROM ${table} WHERE id = $1`,
-    values: [id]
-  };
-  
-  const result = await db.query(query.text, query.values);
-  return result.rowCount > 0;
+async function deleteById(model, id) {
+  try {
+    const result = await model.findByIdAndDelete(id);
+    return !!result;
+  } catch (error) {
+    logger.error(`Error deleting document: ${error.message}`);
+    throw error;
+  }
 }
 
 /**
- * Get a record by ID from the specified table
- * @param {string} table - Table name
- * @param {string} id - Record ID
- * @returns {Promise<any>} - Retrieved record
- */
-async function getRecordById(table, id) {
-  const query = {
-    text: `SELECT * FROM ${table} WHERE id = $1`,
-    values: [id]
-  };
-  
-  const result = await db.query(query.text, query.values);
-  return result.rows[0];
-}
-
-/**
- * Get records with pagination from the specified table
- * @param {string} table - Table name
+ * Find documents with pagination
+ * @param {mongoose.Model} model - Mongoose model
+ * @param {Object} query - Query conditions
  * @param {Object} options - Pagination options
- * @returns {Promise<{data: Array<any>, total: number}>} - Records and total count
+ * @returns {Promise<{data: Array<mongoose.Document>, total: number}>} - Paginated results
  */
-async function getPaginatedRecords(table, { page = 1, limit = 10, orderBy = 'id', order = 'ASC' }) {
-  const offset = (page - 1) * limit;
+async function findWithPagination(model, query = {}, options = {}) {
+  const { page = 1, limit = 10, sort = { _id: 1 } } = options;
+  const skip = (page - 1) * limit;
   
-  const countQuery = {
-    text: `SELECT COUNT(*) FROM ${table}`
-  };
-  
-  const dataQuery = {
-    text: `
-      SELECT *
-      FROM ${table}
-      ORDER BY ${orderBy} ${order}
-      LIMIT $1 OFFSET $2
-    `,
-    values: [limit, offset]
-  };
-  
-  const [countResult, dataResult] = await Promise.all([
-    db.query(countQuery.text),
-    db.query(dataQuery.text, dataQuery.values)
-  ]);
-  
-  return {
-    data: dataResult.rows,
-    total: parseInt(countResult.rows[0].count)
-  };
+  try {
+    const [data, total] = await Promise.all([
+      model.find(query).sort(sort).skip(skip).limit(limit),
+      model.countDocuments(query)
+    ]);
+    
+    return {
+      data,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit)
+    };
+  } catch (error) {
+    logger.error(`Error finding documents with pagination: ${error.message}`);
+    throw error;
+  }
 }
 
 module.exports = {
-  executeTransaction,
-  insertRecord,
-  updateRecord,
-  deleteRecord,
-  getRecordById,
-  getPaginatedRecords
+  runTransaction,
+  createDocument,
+  findById,
+  updateById,
+  deleteById,
+  findWithPagination
 }; 
