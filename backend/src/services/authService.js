@@ -87,6 +87,26 @@ class AuthService {
             throw error;
         }
     }
+
+    async updateUserProfile(userId, userData) {
+        try {
+            const user = await User.findByIdAndUpdate(
+                userId,
+                { $set: userData },
+                { new: true, runValidators: true }
+            );
+            
+            if (!user) {
+                throw new Error('User not found');
+            }
+            
+            logger.info('User profile updated successfully', { userId });
+            return user.toJSON();
+        } catch (error) {
+            logger.error('Error in updateUserProfile service', { error: error.message });
+            throw error;
+        }
+    }
 }
 
 module.exports = new AuthService(); 
