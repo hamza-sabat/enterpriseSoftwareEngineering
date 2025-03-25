@@ -53,6 +53,22 @@ const authenticate = async (req, res, next) => {
 };
 
 /**
+ * Middleware to ensure user has admin role
+ */
+const requireAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required.' });
+  }
+  
+  if (req.user.role !== 'admin') {
+    logger.warn(`Unauthorized admin access attempt by user: ${req.user.id}`);
+    return res.status(403).json({ message: 'Admin access required.' });
+  }
+  
+  next();
+};
+
+/**
  * Function to generate JWT token
  */
 const generateToken = (user) => {
@@ -69,5 +85,6 @@ const generateToken = (user) => {
 
 module.exports = {
   authenticate,
+  requireAdmin,
   generateToken
 }; 
