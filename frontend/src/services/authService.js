@@ -14,6 +14,7 @@ const api = axios.create({
 // Add interceptor to include the token in requests
 api.interceptors.request.use(
   (config) => {
+    // Get the latest token from localStorage each time a request is made
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -35,9 +36,9 @@ export const login = async (email, password) => {
   }
 };
 
-export const register = async (email, password) => {
+export const register = async (email, password, name) => {
   try {
-    const response = await api.post('/auth/register', { email, password });
+    const response = await api.post('/auth/register', { email, password, name });
     return response.data;
   } catch (error) {
     // Check if this is a validation error with specific field errors
@@ -70,10 +71,28 @@ export const getUserProfile = async () => {
 
 export const updateUserProfile = async (userData) => {
   try {
+    console.log('Sending profile update request with data:', userData);
     const response = await api.put('/auth/profile', userData);
+    console.log('Profile update response:', response.data);
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Failed to update profile');
+    console.error('Profile update error:', error);
+    console.error('Error response:', error.response?.data);
+    
+    // Provide more detailed error information
+    let errorMessage = 'Failed to update profile';
+    if (error.response && error.response.data) {
+      errorMessage = error.response.data.message || error.response.data.error || errorMessage;
+      // If there are validation errors, join them
+      if (error.response.data.errors) {
+        const validationErrors = Object.values(error.response.data.errors).join('. ');
+        errorMessage = `${errorMessage}: ${validationErrors}`;
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    throw new Error(errorMessage);
   }
 };
 
