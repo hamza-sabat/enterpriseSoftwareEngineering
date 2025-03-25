@@ -1,56 +1,68 @@
 const jwt = require('jsonwebtoken');
-const { logger } = require('../utils/logger');
 const User = require('../models/User');
+const logger = require('../utils/logger');
+
+// Load JWT secret from environment variables
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 /**
- * Middleware to authenticate user using JWT
+ * Middleware to authenticate user with JWT
  */
 const authenticate = async (req, res, next) => {
   try {
-    // Get token from Authorization header
+    // Get token from header
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return res.status(401).json({ message: 'Authentication required. No token provided.' });
     }
     
+    // Get token from header
     const token = authHeader.split(' ')[1];
     
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!token) {
+      return res.status(401).json({ message: 'Authentication required. No token provided.' });
+    }
     
-    // Find user
-    const user = await User.findById(decoded.userId);
+    // Verify token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Find user by id from token
+    const user = await User.findById(decoded.id);
     
     if (!user) {
-      return res.status(401).json({ error: 'User not found' });
+      return res.status(401).json({ message: 'User not found or token invalid.' });
     }
     
     // Add user to request object
-    req.user = user;
+    req.user = {
+      id: user._id,
+      email: user.email,
+      role: user.role
+    };
+    
     next();
   } catch (error) {
-    logger.error(`Authentication error: ${error.message}`);
-    
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-    
     if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expired' });
+      return res.status(401).json({ message: 'Token expired. Please login again.' });
     }
     
-    res.status(500).json({ error: 'Server error' });
+    logger.error('Authentication error:', error);
+    return res.status(401).json({ message: 'Authentication failed. Invalid token.' });
   }
 };
 
 /**
- * Generate JWT token for user
+ * Function to generate JWT token
  */
-const generateToken = (userId) => {
+const generateToken = (user) => {
   return jwt.sign(
-    { userId },
-    process.env.JWT_SECRET,
+    { 
+      id: user._id,
+      email: user.email,
+      role: user.role
+    }, 
+    JWT_SECRET, 
     { expiresIn: '24h' }
   );
 };

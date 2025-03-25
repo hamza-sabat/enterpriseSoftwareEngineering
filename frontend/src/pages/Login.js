@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Box,
@@ -11,7 +11,10 @@ import {
   Button,
   Typography,
   Alert,
+  CircularProgress,
 } from '@mui/material';
+import { useAuth } from '../context/AuthContext';
+import * as authService from '../services/authService';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -35,6 +38,8 @@ function TabPanel(props) {
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login, register } = useAuth();
   const [tabValue, setTabValue] = useState(0);
   const [formData, setFormData] = useState({
     email: '',
@@ -42,6 +47,10 @@ function Login() {
     confirmPassword: '',
   });
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // If redirected here from another page, navigate there after login
+  const from = location.state?.from?.pathname || '/portfolio';
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -59,13 +68,17 @@ function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
     try {
-      // TODO: Implement actual login logic
-      console.log('Logging in with:', formData);
-      navigate('/market');
+      const { email, password } = formData;
+      const data = await authService.login(email, password);
+      await login(data);
+      navigate(from, { replace: true });
     } catch (err) {
-      setError('Invalid email or password');
+      setError(err.message || 'Invalid email or password');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -78,12 +91,16 @@ function Login() {
       return;
     }
 
+    setIsLoading(true);
     try {
-      // TODO: Implement actual signup logic
-      console.log('Signing up with:', formData);
-      navigate('/market');
+      const { email, password } = formData;
+      const data = await authService.register(email, password);
+      await register(data);
+      navigate(from, { replace: true });
     } catch (err) {
-      setError('Failed to create account');
+      setError(err.message || 'Failed to create account');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -128,6 +145,7 @@ function Login() {
                 onChange={handleInputChange}
                 margin="normal"
                 required
+                disabled={isLoading}
               />
               <TextField
                 fullWidth
@@ -138,14 +156,16 @@ function Login() {
                 onChange={handleInputChange}
                 margin="normal"
                 required
+                disabled={isLoading}
               />
               <Button
                 type="submit"
                 variant="contained"
                 fullWidth
                 sx={{ mt: 3 }}
+                disabled={isLoading}
               >
-                Login
+                {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Login'}
               </Button>
             </form>
           </TabPanel>
@@ -161,6 +181,7 @@ function Login() {
                 onChange={handleInputChange}
                 margin="normal"
                 required
+                disabled={isLoading}
               />
               <TextField
                 fullWidth
@@ -171,6 +192,7 @@ function Login() {
                 onChange={handleInputChange}
                 margin="normal"
                 required
+                disabled={isLoading}
               />
               <TextField
                 fullWidth
@@ -181,14 +203,16 @@ function Login() {
                 onChange={handleInputChange}
                 margin="normal"
                 required
+                disabled={isLoading}
               />
               <Button
                 type="submit"
                 variant="contained"
                 fullWidth
                 sx={{ mt: 3 }}
+                disabled={isLoading}
               >
-                Sign Up
+                {isLoading ? <CircularProgress size={24} color="inherit" /> : 'Sign Up'}
               </Button>
             </form>
           </TabPanel>
