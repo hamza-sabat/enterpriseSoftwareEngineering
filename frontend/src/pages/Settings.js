@@ -6,12 +6,8 @@ import {
   CardContent,
   Container,
   Divider,
-  FormControl,
   FormControlLabel,
-  FormLabel,
   Grid,
-  Radio,
-  RadioGroup,
   Switch,
   TextField,
   Typography,
@@ -22,10 +18,12 @@ import {
 } from '@mui/material';
 import { Save as SaveIcon, Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { useThemeContext } from '../context/ThemeContext';
 import * as authService from '../services/authService';
 
 function Settings() {
   const { currentUser, updateUserProfile } = useAuth();
+  const { darkMode, toggleDarkMode } = useThemeContext();
   
   // User profile settings
   const [userForm, setUserForm] = useState({
@@ -34,15 +32,6 @@ function Settings() {
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
-  });
-
-  // Application preferences
-  const [preferences, setPreferences] = useState({
-    darkMode: false,
-    notifications: true,
-    currency: 'USD',
-    refreshRate: '30',
-    theme: 'light',
   });
 
   // Password visibility states
@@ -98,14 +87,6 @@ function Settings() {
     setUserForm({
       ...userForm,
       [name]: value,
-    });
-  };
-
-  const handlePreferencesChange = (e) => {
-    const { name, value, checked } = e.target;
-    setPreferences({
-      ...preferences,
-      [name]: e.target.type === 'checkbox' ? checked : value,
     });
   };
 
@@ -207,22 +188,6 @@ function Settings() {
       setMessage({ type: 'success', text: 'Password updated successfully!' });
     } catch (error) {
       setMessage({ type: 'error', text: error.message || 'Failed to update password.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSavePreferences = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage({ type: '', text: '' });
-
-    try {
-      // TODO: We'll connect this to a user preferences API endpoint later
-      console.log('Saving preferences:', preferences);
-      setMessage({ type: 'success', text: 'Preferences saved successfully!' });
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to save preferences.' });
     } finally {
       setLoading(false);
     }
@@ -398,108 +363,28 @@ function Settings() {
             </Card>
           </Grid>
 
-          {/* Application Preferences */}
+          {/* Dark Mode Settings */}
           <Grid item xs={12} md={6}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
-                  Application Preferences
+                  Appearance
                 </Typography>
                 <Divider sx={{ mb: 3 }} />
 
-                <Box component="form" onSubmit={handleSavePreferences} sx={{ mt: 2 }}>
+                <Box sx={{ mt: 2 }}>
                   <Grid container spacing={2}>
                     <Grid item xs={12}>
                       <FormControlLabel
                         control={
                           <Switch
-                            name="darkMode"
-                            checked={preferences.darkMode}
-                            onChange={handlePreferencesChange}
+                            checked={darkMode}
+                            onChange={toggleDarkMode}
                             color="primary"
-                            disabled={loading}
                           />
                         }
                         label="Dark Mode"
                       />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            name="notifications"
-                            checked={preferences.notifications}
-                            onChange={handlePreferencesChange}
-                            color="primary"
-                            disabled={loading}
-                          />
-                        }
-                        label="Enable Notifications"
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      <FormControl component="fieldset" sx={{ mt: 2 }}>
-                        <FormLabel component="legend">Default Currency</FormLabel>
-                        <RadioGroup
-                          name="currency"
-                          value={preferences.currency}
-                          onChange={handlePreferencesChange}
-                          row
-                        >
-                          <FormControlLabel value="USD" control={<Radio disabled={loading} />} label="USD" />
-                          <FormControlLabel value="EUR" control={<Radio disabled={loading} />} label="EUR" />
-                          <FormControlLabel value="GBP" control={<Radio disabled={loading} />} label="GBP" />
-                          <FormControlLabel value="BTC" control={<Radio disabled={loading} />} label="BTC" />
-                        </RadioGroup>
-                      </FormControl>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        select
-                        fullWidth
-                        label="Data Refresh Rate"
-                        name="refreshRate"
-                        value={preferences.refreshRate}
-                        onChange={handlePreferencesChange}
-                        SelectProps={{
-                          native: true,
-                        }}
-                        disabled={loading}
-                      >
-                        <option value="15">15 seconds</option>
-                        <option value="30">30 seconds</option>
-                        <option value="60">1 minute</option>
-                        <option value="300">5 minutes</option>
-                      </TextField>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <TextField
-                        select
-                        fullWidth
-                        label="Theme"
-                        name="theme"
-                        value={preferences.theme}
-                        onChange={handlePreferencesChange}
-                        SelectProps={{
-                          native: true,
-                        }}
-                        disabled={loading}
-                      >
-                        <option value="light">Light</option>
-                        <option value="dark">Dark</option>
-                        <option value="system">System Default</option>
-                      </TextField>
-                    </Grid>
-                    <Grid item xs={12}>
-                      <Button
-                        type="submit"
-                        variant="contained"
-                        startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
-                        sx={{ mt: 2 }}
-                        disabled={loading}
-                      >
-                        Save Preferences
-                      </Button>
                     </Grid>
                   </Grid>
                 </Box>
