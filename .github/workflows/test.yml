@@ -1,0 +1,51 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      # We don't actually need a MongoDB service since we're using mongodb-memory-server
+      # But we're adding it here for completeness in case you want to switch to a real MongoDB instance later
+      mongodb:
+        image: mongo:5.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd="mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+        cache-dependency-path: 'backend/package-lock.json'
+    
+    - name: Install backend dependencies
+      run: cd backend && npm ci
+    
+    - name: Run backend tests
+      run: cd backend && npm run test:ci
+      env:
+        JWT_SECRET: test_jwt_secret
+        NODE_ENV: test
+      
+    # Uncomment when you have frontend tests
+    # - name: Install frontend dependencies
+    #   run: cd frontend && npm ci
+    # 
+    # - name: Run frontend tests
+    #   run: cd frontend && npm test 
