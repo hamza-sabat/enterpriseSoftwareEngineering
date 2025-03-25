@@ -327,6 +327,37 @@ crypto-portfolio/
 └── README.md
 ```
 
+## Known Issues & Future Enhancements
+
+### Current Limitations
+
+- **Live Updates**: Portfolio values are currently updated only on page refresh or manual update, not live to the second.
+- **Market Data Frequency**: Market data is fetched from external APIs with rate limiting considerations.
+- **Mobile Responsiveness**: While the UI is responsive, some complex data tables may require optimization for very small screens.
+- **Browser Support**: The application is optimized for modern browsers; some features may have limited functionality in older browsers.
+
+### Planned Enhancements
+
+1. **Transaction History**
+   - Implement detailed transaction logging
+   - Add filtering and search capabilities for transaction history
+   - Generate transaction reports and analytics
+
+2. **Advanced Analytics Dashboard**
+   - Create visual representations of portfolio performance over time
+   - Implement asset allocation charts and distribution analysis
+   - Add comparison benchmarks against major cryptocurrencies and indices
+
+3. **Notification System**
+   - Develop price alerts for user-defined thresholds
+   - Implement email and in-app notifications
+   - Add scheduled reports and performance summaries
+
+4. **API Enhancements**
+   - Implement caching strategies to reduce external API calls
+   - Add more robust error handling for API failures
+   - Expand market data sources for more comprehensive coverage
+
 ## Contributing
 
 1. Create a new branch for your feature
