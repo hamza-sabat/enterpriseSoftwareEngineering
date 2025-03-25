@@ -28,7 +28,10 @@ export const login = async (email, password) => {
     const response = await api.post('/auth/login', { email, password });
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Login failed');
+    if (error.response && error.response.data) {
+      throw new Error(error.response.data.message || 'Login failed');
+    }
+    throw new Error('Network error. Please check your connection.');
   }
 };
 
@@ -37,7 +40,22 @@ export const register = async (email, password) => {
     const response = await api.post('/auth/register', { email, password });
     return response.data;
   } catch (error) {
-    throw new Error(error.response?.data?.message || 'Registration failed');
+    // Check if this is a validation error with specific field errors
+    if (error.response && error.response.data && error.response.data.errors) {
+      const errorMessages = [];
+      const errors = error.response.data.errors;
+      
+      // Format validation errors
+      Object.keys(errors).forEach(field => {
+        errorMessages.push(`${errors[field]}`);
+      });
+      
+      throw new Error(errorMessages.join('. '));
+    } else if (error.response && error.response.data && error.response.data.message) {
+      throw new Error(error.response.data.message);
+    }
+    
+    throw new Error('Network error. Please check your connection.');
   }
 };
 
