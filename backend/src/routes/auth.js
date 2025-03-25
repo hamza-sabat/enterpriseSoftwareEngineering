@@ -46,6 +46,23 @@ router.post('/register', async (req, res) => {
     });
   } catch (error) {
     logger.error('Error in user registration:', error);
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = {};
+      
+      // Extract specific validation error messages
+      for (const field in error.errors) {
+        validationErrors[field] = error.errors[field].message;
+      }
+      
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: validationErrors
+      });
+    }
+    
+    // Handle other errors
     res.status(500).json({ message: 'Server error during registration' });
   }
 });
@@ -58,6 +75,11 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    
+    // Validate inputs
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
     
     // Find user by email
     const user = await User.findOne({ email });

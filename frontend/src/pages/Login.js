@@ -12,6 +12,9 @@ import {
   Typography,
   Alert,
   CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import * as authService from '../services/authService';
@@ -86,8 +89,27 @@ function Login() {
     e.preventDefault();
     setError('');
 
+    // Client-side validation
+    const validationErrors = [];
+    
+    if (!formData.email) {
+      validationErrors.push('Email is required');
+    } else if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
+      validationErrors.push('Please enter a valid email address');
+    }
+    
+    if (!formData.password) {
+      validationErrors.push('Password is required');
+    } else if (formData.password.length < 6) {
+      validationErrors.push('Password must be at least 6 characters long');
+    }
+    
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      validationErrors.push('Passwords do not match');
+    }
+    
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join('. '));
       return;
     }
 

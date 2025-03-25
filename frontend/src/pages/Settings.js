@@ -110,9 +110,26 @@ function Settings() {
   const handleChangePassword = async (e) => {
     e.preventDefault();
     
+    // Client-side validation
+    const validationErrors = [];
+    
+    if (!userForm.currentPassword) {
+      validationErrors.push('Current password is required');
+    }
+    
+    if (!userForm.newPassword) {
+      validationErrors.push('New password is required');
+    } else if (userForm.newPassword.length < 6) {
+      validationErrors.push('New password must be at least 6 characters long');
+    }
+    
     // Validate passwords match
     if (userForm.newPassword !== userForm.confirmPassword) {
-      setMessage({ type: 'error', text: 'New passwords do not match.' });
+      validationErrors.push('New passwords do not match');
+    }
+    
+    if (validationErrors.length > 0) {
+      setMessage({ type: 'error', text: validationErrors.join('. ') });
       return;
     }
     
