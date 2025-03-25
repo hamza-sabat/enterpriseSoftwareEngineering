@@ -21,18 +21,10 @@ import {
 } from '@mui/material';
 import { TrendingUp, TrendingDown, Refresh, Search } from '@mui/icons-material';
 import MarketService from '../services/marketService';
-
-// Utility function to format currency
-const formatCurrency = (value, currency = 'USD') => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 6,
-  }).format(value);
-};
+import { useCurrency } from '../context/CurrencyContext';
 
 function CryptoCard({ crypto }) {
+  const { formatCurrency } = useCurrency();
   const change24h = crypto.quote?.USD?.percent_change_24h || 0;
   const isPositive = change24h > 0;
   const color = isPositive ? 'success.main' : 'error.main';
@@ -90,6 +82,8 @@ function CryptoCard({ crypto }) {
 }
 
 function MarketOverview({ data }) {
+  const { formatCurrency } = useCurrency();
+  
   if (!data) return null;
   
   return (
@@ -134,6 +128,7 @@ function MarketOverview({ data }) {
 }
 
 function Market() {
+  const { formatCurrency } = useCurrency();
   const [cryptos, setCryptos] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);

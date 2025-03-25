@@ -34,12 +34,14 @@ import {
 import { Add as AddIcon, Delete as DeleteIcon, Refresh as RefreshIcon, Edit as EditIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCurrency } from '../context/CurrencyContext';
 import PortfolioService from '../services/portfolioService';
 import MarketService from '../services/marketService';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
 const Portfolio = () => {
   const { currentUser } = useAuth();
+  const { formatCurrency } = useCurrency();
   const navigate = useNavigate();
   const [portfolio, setPortfolio] = useState(null);
   const [currentPrices, setCurrentPrices] = useState({});
@@ -501,7 +503,7 @@ const Portfolio = () => {
                   Total Value
                 </Typography>
                 <Typography variant="h5" component="div">
-                  ${performance?.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                  {formatCurrency(performance?.totalValue || 0)}
                 </Typography>
               </CardContent>
             </Card>
@@ -517,8 +519,7 @@ const Portfolio = () => {
                   component="div"
                   color={performance?.totalProfit >= 0 ? 'success.main' : 'error.main'}
                 >
-                  ${performance?.totalProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} 
-                  ({performance?.totalProfitPercentage >= 0 ? '+' : ''}{performance?.totalProfitPercentage.toFixed(2) || '0.00'}%)
+                  {formatCurrency(performance?.totalProfit || 0)}
                 </Typography>
               </CardContent>
             </Card>
@@ -591,7 +592,16 @@ const Portfolio = () => {
                         ))}
                       </Pie>
                       <Tooltip 
-                        formatter={(value) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        formatter={(value, entry) => {
+                          if (!entry || !entry.payload) {
+                            return [formatCurrency(value), ''];
+                          }
+                          
+                          const percent = performance?.totalValue ? 
+                            (value / performance.totalValue) * 100 : 0;
+                          
+                          return [formatCurrency(value), `${percent.toFixed(1)}%`];
+                        }}
                         contentStyle={{
                           backgroundColor: theme.palette.background.paper,
                           borderColor: theme.palette.divider,
@@ -609,8 +619,13 @@ const Portfolio = () => {
                         iconSize={10}
                         wrapperStyle={{ paddingTop: 20 }}
                         formatter={(value, entry) => {
-                          const { payload } = entry;
-                          const percent = (payload.value / performance?.totalValue) * 100;
+                          if (!entry || !entry.payload) {
+                            return value;
+                          }
+                          
+                          const percent = performance?.totalValue ? 
+                            (entry.payload.value / performance.totalValue) * 100 : 0;
+                          
                           return `${value} (${percent.toFixed(1)}%)`;
                         }} 
                       />
@@ -632,14 +647,14 @@ const Portfolio = () => {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                     <Typography variant="body2" color="text.secondary">Initial Investment</Typography>
                     <Typography variant="body1" fontWeight="medium">
-                      ${performance?.totalInvestment?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                      {formatCurrency(performance?.totalInvestment || 0)}
                     </Typography>
                   </Box>
                   
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                     <Typography variant="body2" color="text.secondary">Current Value</Typography>
                     <Typography variant="body1" fontWeight="medium">
-                      ${performance?.totalValue?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                      {formatCurrency(performance?.totalValue || 0)}
                     </Typography>
                   </Box>
                   
@@ -652,8 +667,7 @@ const Portfolio = () => {
                       fontWeight="medium"
                       color={performance?.totalProfit >= 0 ? 'success.main' : 'error.main'}
                     >
-                      ${performance?.totalProfit?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} 
-                      ({performance?.totalProfitPercentage >= 0 ? '+' : ''}{performance?.totalProfitPercentage?.toFixed(2) || '0.00'}%)
+                      {formatCurrency(performance?.totalProfit || 0)}
                     </Typography>
                   </Box>
                 </Box>
@@ -686,8 +700,8 @@ const Portfolio = () => {
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography variant="body2" color="text.secondary">Current: ${bestPerformer.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
-                            <Typography variant="body2" color="text.secondary">Bought: ${bestPerformer.purchasePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                            <Typography variant="body2" color="text.secondary">Current: {formatCurrency(bestPerformer.currentPrice)}</Typography>
+                            <Typography variant="body2" color="text.secondary">Bought: {formatCurrency(bestPerformer.purchasePrice)}</Typography>
                           </Box>
                         </Box>
                       )}
@@ -709,8 +723,8 @@ const Portfolio = () => {
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography variant="body2" color="text.secondary">Current: ${worstPerformer.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
-                            <Typography variant="body2" color="text.secondary">Bought: ${worstPerformer.purchasePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                            <Typography variant="body2" color="text.secondary">Current: {formatCurrency(worstPerformer.currentPrice)}</Typography>
+                            <Typography variant="body2" color="text.secondary">Bought: {formatCurrency(worstPerformer.purchasePrice)}</Typography>
                           </Box>
                         </Box>
                       )}
@@ -801,15 +815,15 @@ const Portfolio = () => {
                             {holding.name} ({holding.symbol})
                           </TableCell>
                           <TableCell align="right">{holding.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</TableCell>
-                          <TableCell align="right">${holding.purchasePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell align="right">{formatCurrency(holding.purchasePrice)}</TableCell>
                           <TableCell align="right">{new Date(holding.purchaseDate).toLocaleDateString()}</TableCell>
-                          <TableCell align="right">${holding.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell align="right">${holding.holdingValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell align="right">{formatCurrency(holding.currentPrice)}</TableCell>
+                          <TableCell align="right">{formatCurrency(holding.holdingValue)}</TableCell>
                           <TableCell 
                             align="right"
                             sx={{ color: holding.profit >= 0 ? 'success.main' : 'error.main' }}
                           >
-                            ${holding.profit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({holding.profitPercentage.toFixed(2)}%)
+                            {formatCurrency(holding.profit)} ({holding.profitPercentage.toFixed(2)}%)
                           </TableCell>
                           <TableCell align="right">
                             <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
