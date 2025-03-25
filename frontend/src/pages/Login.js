@@ -100,8 +100,28 @@ function Login() {
     
     if (!formData.password) {
       validationErrors.push('Password is required');
-    } else if (formData.password.length < 6) {
-      validationErrors.push('Password must be at least 6 characters long');
+    } else {
+      // Password complexity validation
+      const passwordErrors = [];
+      if (formData.password.length < 8) {
+        passwordErrors.push('at least 8 characters long');
+      }
+      if (!/[A-Z]/.test(formData.password)) {
+        passwordErrors.push('one uppercase letter');
+      }
+      if (!/[a-z]/.test(formData.password)) {
+        passwordErrors.push('one lowercase letter');
+      }
+      if (!/\d/.test(formData.password)) {
+        passwordErrors.push('one number');
+      }
+      if (!/[@$!%*?&]/.test(formData.password)) {
+        passwordErrors.push('one special character (@$!%*?&)');
+      }
+      
+      if (passwordErrors.length > 0) {
+        validationErrors.push(`Password must contain ${passwordErrors.join(', ')}`);
+      }
     }
     
     if (formData.password !== formData.confirmPassword) {
@@ -215,6 +235,7 @@ function Login() {
                 margin="normal"
                 required
                 disabled={isLoading}
+                helperText="Password must contain at least 8 characters, including uppercase, lowercase, number, and special character (@$!%*?&)"
               />
               <TextField
                 fullWidth

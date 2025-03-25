@@ -119,8 +119,28 @@ function Settings() {
     
     if (!userForm.newPassword) {
       validationErrors.push('New password is required');
-    } else if (userForm.newPassword.length < 6) {
-      validationErrors.push('New password must be at least 6 characters long');
+    } else {
+      // Password complexity validation
+      const passwordErrors = [];
+      if (userForm.newPassword.length < 8) {
+        passwordErrors.push('at least 8 characters long');
+      }
+      if (!/[A-Z]/.test(userForm.newPassword)) {
+        passwordErrors.push('one uppercase letter');
+      }
+      if (!/[a-z]/.test(userForm.newPassword)) {
+        passwordErrors.push('one lowercase letter');
+      }
+      if (!/\d/.test(userForm.newPassword)) {
+        passwordErrors.push('one number');
+      }
+      if (!/[@$!%*?&]/.test(userForm.newPassword)) {
+        passwordErrors.push('one special character (@$!%*?&)');
+      }
+      
+      if (passwordErrors.length > 0) {
+        validationErrors.push(`New password must contain ${passwordErrors.join(', ')}`);
+      }
     }
     
     // Validate passwords match
@@ -270,6 +290,7 @@ function Settings() {
                         value={userForm.newPassword}
                         onChange={handleUserFormChange}
                         disabled={loading}
+                        helperText="Password must contain at least 8 characters, including uppercase, lowercase, number, and special character (@$!%*?&)"
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
