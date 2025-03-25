@@ -75,12 +75,9 @@ function Navigation({ children }) {
           <Avatar sx={{ mr: 2 }}>
             {currentUser.email ? currentUser.email.charAt(0).toUpperCase() : '?'}
           </Avatar>
-          <Box>
-            <Typography variant="subtitle1" noWrap>
-              {currentUser.name || currentUser.email}
-            </Typography>
-            <Typography variant="body2" color="textSecondary" noWrap>
-              {currentUser.email}
+          <Box sx={{ width: '100%', overflow: 'hidden' }}>
+            <Typography variant="subtitle1" noWrap sx={{ display: 'block', maxWidth: '100%', fontWeight: 'medium' }}>
+              {currentUser.name || currentUser.email.split('@')[0]}
             </Typography>
           </Box>
         </Box>
@@ -94,6 +91,14 @@ function Navigation({ children }) {
             <ListItemButton
               selected={location.pathname === item.path}
               onClick={() => handleNavigation(item.path)}
+              sx={{
+                backgroundColor: location.pathname === item.path ? theme.palette.action.selected : 'transparent',
+                '&:hover': {
+                  backgroundColor: theme.palette.action.hover,
+                },
+                borderRadius: '4px',
+                mx: 1,
+              }}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />
@@ -101,7 +106,16 @@ function Navigation({ children }) {
           </ListItem>
         ))}
         <ListItem disablePadding>
-          <ListItemButton onClick={handleLogout}>
+          <ListItemButton 
+            onClick={handleLogout}
+            sx={{
+              '&:hover': {
+                backgroundColor: theme.palette.action.hover,
+              },
+              borderRadius: '4px',
+              mx: 1,
+            }}
+          >
             <ListItemIcon>
               <LogoutIcon />
             </ListItemIcon>
