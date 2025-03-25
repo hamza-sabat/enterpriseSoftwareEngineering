@@ -11,6 +11,7 @@ import Portfolio from './pages/Portfolio';
 import Settings from './pages/Settings';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider, useThemeContext } from './context/ThemeContext';
+import { CurrencyProvider } from './context/CurrencyContext';
 
 // Loading component for lazy-loaded routes
 const LoadingFallback = () => (
@@ -55,7 +56,9 @@ function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <AppContent />
+        <CurrencyProvider>
+          <AppContent />
+        </CurrencyProvider>
       </ThemeProvider>
     </AuthProvider>
   );

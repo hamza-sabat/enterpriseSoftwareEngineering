@@ -6,8 +6,12 @@ import {
   CardContent,
   Container,
   Divider,
+  FormControl,
   FormControlLabel,
+  FormLabel,
   Grid,
+  Radio,
+  RadioGroup,
   Switch,
   TextField,
   Typography,
@@ -19,11 +23,13 @@ import {
 import { Save as SaveIcon, Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { useThemeContext } from '../context/ThemeContext';
+import { useCurrency } from '../context/CurrencyContext';
 import * as authService from '../services/authService';
 
 function Settings() {
   const { currentUser, updateUserProfile } = useAuth();
   const { darkMode, toggleDarkMode } = useThemeContext();
+  const { currency, setCurrency, CURRENCY_SYMBOLS } = useCurrency();
   
   // User profile settings
   const [userForm, setUserForm] = useState({
@@ -58,6 +64,12 @@ function Settings() {
 
   const handleMouseDownPassword = (event) => {
     event.preventDefault();
+  };
+
+  // Handle currency change
+  const handleCurrencyChange = (event) => {
+    setCurrency(event.target.value);
+    setMessage({ type: 'success', text: 'Currency updated successfully!' });
   };
 
   // Load user profile data
@@ -363,17 +375,18 @@ function Settings() {
             </Card>
           </Grid>
 
-          {/* Dark Mode Settings */}
+          {/* App Settings */}
           <Grid item xs={12} md={6}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
-                  Appearance
+                  Appearance & Preferences
                 </Typography>
                 <Divider sx={{ mb: 3 }} />
 
                 <Box sx={{ mt: 2 }}>
-                  <Grid container spacing={2}>
+                  <Grid container spacing={3}>
+                    {/* Dark Mode Setting */}
                     <Grid item xs={12}>
                       <FormControlLabel
                         control={
@@ -385,6 +398,35 @@ function Settings() {
                         }
                         label="Dark Mode"
                       />
+                    </Grid>
+                    
+                    {/* Currency Setting */}
+                    <Grid item xs={12}>
+                      <FormControl component="fieldset">
+                        <FormLabel component="legend">Default Currency</FormLabel>
+                        <RadioGroup
+                          row
+                          name="currency"
+                          value={currency}
+                          onChange={handleCurrencyChange}
+                        >
+                          <FormControlLabel 
+                            value="USD" 
+                            control={<Radio />} 
+                            label={`USD (${CURRENCY_SYMBOLS.USD})`} 
+                          />
+                          <FormControlLabel 
+                            value="EUR" 
+                            control={<Radio />} 
+                            label={`EUR (${CURRENCY_SYMBOLS.EUR})`} 
+                          />
+                          <FormControlLabel 
+                            value="GBP" 
+                            control={<Radio />} 
+                            label={`GBP (${CURRENCY_SYMBOLS.GBP})`} 
+                          />
+                        </RadioGroup>
+                      </FormControl>
                     </Grid>
                   </Grid>
                 </Box>
