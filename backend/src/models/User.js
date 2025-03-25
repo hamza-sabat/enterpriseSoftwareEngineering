@@ -53,7 +53,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
+    enum: ['user'],
     default: 'user'
   },
   createdAt: {
@@ -92,11 +92,27 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 };
 
 // Method to return user data without sensitive information
-userSchema.methods.toPublic = function() {
+userSchema.methods.toPublicJSON = function() {
   const userObject = this.toObject();
   delete userObject.password;
   return userObject;
 };
+
+// Create a virtual for the ID that can be included in JSON responses
+userSchema.virtual('id').get(function() {
+  return this._id.toHexString();
+});
+
+// Ensure virtual fields are serialized
+userSchema.set('toJSON', {
+  virtuals: true,
+  transform: (doc, ret) => {
+    delete ret._id;
+    delete ret.__v;
+    delete ret.password;
+    return ret;
+  }
+});
 
 const User = mongoose.model('User', userSchema);
 

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { logger } = require('../utils/logger');
 
 const holdingSchema = new mongoose.Schema({
   cryptoId: {
@@ -69,10 +70,27 @@ portfolioSchema.pre('save', function(next) {
     this.updatedAt = Date.now();
     next();
   } catch (error) {
+    logger.error('Error in Portfolio pre-save hook', { error: error.message });
     next(error);
   }
 });
 
+// Create a virtual for the ID that can be included in JSON responses
+portfolioSchema.virtual('id').get(function() {
+  return this._id.toHexString();
+});
+
+// Ensure virtual fields are serialized
+portfolioSchema.set('toJSON', {
+  virtuals: true,
+  transform: (doc, ret) => {
+    delete ret._id;
+    delete ret.__v;
+    return ret;
+  }
+});
+
+// Create the Portfolio model
 const Portfolio = mongoose.model('Portfolio', portfolioSchema);
 
 module.exports = Portfolio; 
