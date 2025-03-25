@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -16,14 +16,19 @@ import {
   TextField,
   Typography,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import { Save as SaveIcon } from '@mui/icons-material';
+import { useAuth } from '../context/AuthContext';
+import * as authService from '../services/authService';
 
 function Settings() {
+  const { currentUser, updateUserProfile } = useAuth();
+  
   // User profile settings
   const [userForm, setUserForm] = useState({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
+    name: '',
+    email: '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
@@ -39,6 +44,30 @@ function Settings() {
   });
 
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [loading, setLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  // Load user profile data
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        if (currentUser) {
+          // Pre-fill the form with current user data
+          setUserForm({
+            ...userForm,
+            name: currentUser.name || '',
+            email: currentUser.email || '',
+          });
+        }
+      } catch (error) {
+        setMessage({ type: 'error', text: 'Failed to load profile data.' });
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, [currentUser]);
 
   const handleUserFormChange = (e) => {
     const { name, value } = e.target;
@@ -56,27 +85,85 @@ function Settings() {
     });
   };
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    console.log('Saving profile:', userForm);
-    // TODO: Implement actual profile save logic
-  };
+    setLoading(true);
+    setMessage({ type: '', text: '' });
 
-  const handleSavePreferences = (e) => {
-    e.preventDefault();
-    console.log('Saving preferences:', preferences);
-    // TODO: Implement actual preferences save logic
-  };
-
-  const handleSave = async () => {
     try {
-      // TODO: Implement save settings logic
-      console.log('Saving settings:', { userForm, preferences });
-      setMessage({ type: 'success', text: 'Settings saved successfully!' });
+      // Only update profile details (not password)
+      const profileData = {
+        name: userForm.name,
+        email: userForm.email,
+      };
+
+      const updatedUser = await authService.updateUserProfile(profileData);
+      updateUserProfile(updatedUser);
+      setMessage({ type: 'success', text: 'Profile updated successfully!' });
     } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to save settings. Please try again.' });
+      setMessage({ type: 'error', text: error.message || 'Failed to update profile.' });
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    
+    // Validate passwords match
+    if (userForm.newPassword !== userForm.confirmPassword) {
+      setMessage({ type: 'error', text: 'New passwords do not match.' });
+      return;
+    }
+    
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      await authService.updatePassword(
+        userForm.currentPassword,
+        userForm.newPassword
+      );
+      
+      // Clear password fields
+      setUserForm({
+        ...userForm,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      
+      setMessage({ type: 'success', text: 'Password updated successfully!' });
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message || 'Failed to update password.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSavePreferences = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      // TODO: We'll connect this to a user preferences API endpoint later
+      console.log('Saving preferences:', preferences);
+      setMessage({ type: 'success', text: 'Preferences saved successfully!' });
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to save preferences.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (profileLoading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Container maxWidth="lg">
@@ -110,6 +197,7 @@ function Settings() {
                         name="name"
                         value={userForm.name}
                         onChange={handleUserFormChange}
+                        disabled={loading}
                       />
                     </Grid>
                     <Grid item xs={12}>
@@ -120,13 +208,31 @@ function Settings() {
                         type="email"
                         value={userForm.email}
                         onChange={handleUserFormChange}
+                        disabled={loading}
                       />
                     </Grid>
                     <Grid item xs={12}>
-                      <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
-                        Change Password
-                      </Typography>
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
+                        sx={{ mt: 2 }}
+                        disabled={loading}
+                      >
+                        Save Profile
+                      </Button>
                     </Grid>
+                  </Grid>
+                </Box>
+
+                {/* Password Change Form */}
+                <Box component="form" onSubmit={handleChangePassword} sx={{ mt: 4 }}>
+                  <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+                    Change Password
+                  </Typography>
+                  <Divider sx={{ mb: 3 }} />
+                  
+                  <Grid container spacing={2}>
                     <Grid item xs={12}>
                       <TextField
                         fullWidth
@@ -135,6 +241,7 @@ function Settings() {
                         type="password"
                         value={userForm.currentPassword}
                         onChange={handleUserFormChange}
+                        disabled={loading}
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
@@ -145,6 +252,7 @@ function Settings() {
                         type="password"
                         value={userForm.newPassword}
                         onChange={handleUserFormChange}
+                        disabled={loading}
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
@@ -155,16 +263,19 @@ function Settings() {
                         type="password"
                         value={userForm.confirmPassword}
                         onChange={handleUserFormChange}
+                        disabled={loading}
                       />
                     </Grid>
                     <Grid item xs={12}>
                       <Button
                         type="submit"
                         variant="contained"
-                        startIcon={<SaveIcon />}
+                        color="primary"
+                        startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
                         sx={{ mt: 2 }}
+                        disabled={loading || !userForm.currentPassword || !userForm.newPassword || !userForm.confirmPassword}
                       >
-                        Save Profile
+                        Update Password
                       </Button>
                     </Grid>
                   </Grid>
@@ -192,6 +303,7 @@ function Settings() {
                             checked={preferences.darkMode}
                             onChange={handlePreferencesChange}
                             color="primary"
+                            disabled={loading}
                           />
                         }
                         label="Dark Mode"
@@ -205,6 +317,7 @@ function Settings() {
                             checked={preferences.notifications}
                             onChange={handlePreferencesChange}
                             color="primary"
+                            disabled={loading}
                           />
                         }
                         label="Enable Notifications"
@@ -219,10 +332,10 @@ function Settings() {
                           onChange={handlePreferencesChange}
                           row
                         >
-                          <FormControlLabel value="USD" control={<Radio />} label="USD" />
-                          <FormControlLabel value="EUR" control={<Radio />} label="EUR" />
-                          <FormControlLabel value="GBP" control={<Radio />} label="GBP" />
-                          <FormControlLabel value="BTC" control={<Radio />} label="BTC" />
+                          <FormControlLabel value="USD" control={<Radio disabled={loading} />} label="USD" />
+                          <FormControlLabel value="EUR" control={<Radio disabled={loading} />} label="EUR" />
+                          <FormControlLabel value="GBP" control={<Radio disabled={loading} />} label="GBP" />
+                          <FormControlLabel value="BTC" control={<Radio disabled={loading} />} label="BTC" />
                         </RadioGroup>
                       </FormControl>
                     </Grid>
@@ -237,6 +350,7 @@ function Settings() {
                         SelectProps={{
                           native: true,
                         }}
+                        disabled={loading}
                       >
                         <option value="15">15 seconds</option>
                         <option value="30">30 seconds</option>
@@ -255,18 +369,20 @@ function Settings() {
                         SelectProps={{
                           native: true,
                         }}
+                        disabled={loading}
                       >
                         <option value="light">Light</option>
                         <option value="dark">Dark</option>
-                        <option value="system">System</option>
+                        <option value="system">System Default</option>
                       </TextField>
                     </Grid>
                     <Grid item xs={12}>
                       <Button
                         type="submit"
                         variant="contained"
-                        startIcon={<SaveIcon />}
+                        startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
                         sx={{ mt: 2 }}
+                        disabled={loading}
                       >
                         Save Preferences
                       </Button>
@@ -276,40 +392,7 @@ function Settings() {
               </CardContent>
             </Card>
           </Grid>
-
-          {/* Danger Zone */}
-          <Grid item xs={12}>
-            <Card sx={{ borderTop: '4px solid #f44336' }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom color="error">
-                  Danger Zone
-                </Typography>
-                <Divider sx={{ mb: 3 }} />
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Box>
-                    <Typography variant="subtitle1">Delete Account</Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      Once you delete your account, there is no going back. This action cannot be undone.
-                    </Typography>
-                  </Box>
-                  <Button variant="outlined" color="error">
-                    Delete Account
-                  </Button>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
         </Grid>
-
-        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSave}
-          >
-            Save Changes
-          </Button>
-        </Box>
       </Box>
     </Container>
   );

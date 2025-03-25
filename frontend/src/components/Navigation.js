@@ -16,6 +16,8 @@ import {
   useTheme,
   useMediaQuery,
   Button,
+  Avatar,
+  Divider,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -23,7 +25,9 @@ import {
   AccountBalanceWallet as WalletIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
+  Person as PersonIcon,
 } from '@mui/icons-material';
+import { useAuth } from '../context/AuthContext';
 
 const drawerWidth = 240;
 
@@ -33,6 +37,7 @@ function Navigation({ children }) {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { currentUser, logout } = useAuth();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -46,8 +51,7 @@ function Navigation({ children }) {
   };
 
   const handleLogout = () => {
-    // TODO: Implement logout logic
-    console.log('Logging out...');
+    logout();
     navigate('/login');
   };
 
@@ -64,6 +68,26 @@ function Navigation({ children }) {
           Crypto Tracker
         </Typography>
       </Toolbar>
+      <Divider />
+      
+      {currentUser && (
+        <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
+          <Avatar sx={{ mr: 2 }}>
+            {currentUser.email ? currentUser.email.charAt(0).toUpperCase() : '?'}
+          </Avatar>
+          <Box>
+            <Typography variant="subtitle1" noWrap>
+              {currentUser.name || currentUser.email}
+            </Typography>
+            <Typography variant="body2" color="textSecondary" noWrap>
+              {currentUser.email}
+            </Typography>
+          </Box>
+        </Box>
+      )}
+      
+      <Divider />
+      
       <List>
         {menuItems.map((item) => (
           <ListItem key={item.text} disablePadding>
@@ -88,6 +112,24 @@ function Navigation({ children }) {
     </div>
   );
 
+  // If not authenticated, don't render navigation
+  if (!currentUser && location.pathname !== '/login') {
+    navigate('/login');
+    return null;
+  }
+
+  // Don't render navigation on login page
+  if (location.pathname === '/login') {
+    return (
+      <Box sx={{ display: 'flex' }}>
+        <CssBaseline />
+        <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+          {children}
+        </Box>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
@@ -108,9 +150,20 @@ function Navigation({ children }) {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {menuItems.find(item => item.path === location.pathname)?.text || 'Crypto Tracker'}
           </Typography>
+          
+          {currentUser && (
+            <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center' }}>
+              <Typography variant="body2" sx={{ mr: 1 }}>
+                {currentUser.email}
+              </Typography>
+              <IconButton color="inherit" onClick={() => handleNavigation('/settings')}>
+                <PersonIcon />
+              </IconButton>
+            </Box>
+          )}
         </Toolbar>
       </AppBar>
       <Box
