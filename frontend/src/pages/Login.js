@@ -51,6 +51,7 @@ function Login() {
     email: '',
     password: '',
     confirmPassword: '',
+    name: '',
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -115,6 +116,10 @@ function Login() {
       validationErrors.push('Please enter a valid email address');
     }
     
+    if (!formData.name) {
+      validationErrors.push('Name is required');
+    }
+    
     if (!formData.password) {
       validationErrors.push('Password is required');
     } else {
@@ -152,8 +157,8 @@ function Login() {
 
     setIsLoading(true);
     try {
-      const { email, password } = formData;
-      const data = await authService.register(email, password);
+      const { email, password, name } = formData;
+      const data = await authService.register(email, password, name);
       await register(data);
       navigate(from, { replace: true });
     } catch (err) {
@@ -245,6 +250,17 @@ function Login() {
 
           <TabPanel value={tabValue} index={1}>
             <form onSubmit={handleSignup}>
+              <TextField
+                fullWidth
+                label="Name"
+                name="name"
+                type="text"
+                value={formData.name}
+                onChange={handleInputChange}
+                margin="normal"
+                required
+                disabled={isLoading}
+              />
               <TextField
                 fullWidth
                 label="Email"
