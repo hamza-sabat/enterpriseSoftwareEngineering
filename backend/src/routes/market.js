@@ -1,6 +1,6 @@
 const express = require('express');
 const marketController = require('../controllers/marketController');
-const authMiddleware = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 const { rateLimiter } = require('../middleware/rateLimiter');
 const { cacheMiddleware, flushCache, getCacheStats } = require('../middleware/cache');
 
@@ -66,11 +66,10 @@ router.get('/global',
 /**
  * @route   POST /api/market/cache/clear
  * @desc    Clear all cache
- * @access  Admin only
+ * @access  Authenticated users
  */
 router.post('/cache/clear', 
-  authMiddleware.authenticate,
-  authMiddleware.requireAdmin,
+  authenticate,
   async (req, res) => {
     try {
       const deletedKeys = flushCache();
@@ -91,11 +90,10 @@ router.post('/cache/clear',
 /**
  * @route   GET /api/market/cache/stats
  * @desc    Get cache statistics
- * @access  Admin only
+ * @access  Authenticated users
  */
 router.get('/cache/stats', 
-  authMiddleware.authenticate,
-  authMiddleware.requireAdmin,
+  authenticate,
   async (req, res) => {
     try {
       const stats = getCacheStats();
