@@ -6,6 +6,7 @@ const rateLimit = require('express-rate-limit');
 const mongoose = require('./database/config');
 const authRoutes = require('./routes/auth');
 const portfolioRoutes = require('./routes/portfolio');
+const marketRoutes = require('./routes/market');
 const { logger } = require('./utils/logger');
 
 // Load environment variables
@@ -34,9 +35,20 @@ app.use(express.urlencoded({ extended: false }));
 // Compression
 app.use(compression());
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    message: 'Server is running'
+  });
+});
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/portfolio', portfolioRoutes);
+app.use('/api/market', marketRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

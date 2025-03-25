@@ -1,0 +1,1 @@
+﻿# Logs\nlogs/\n*.log\nnpm-debug.log*\n\n# Dependencies\nnode_modules/\n.package-lock.json\n\n# Build files\ndist/\nbuild/\n\n# Environment variables\n.env\n.env.local\n.env.*.local\n\n# IDE files\n.vscode/\n.idea/\n*.swp\n*.swo
