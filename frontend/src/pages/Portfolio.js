@@ -29,12 +29,14 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  useTheme,
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon, Refresh as RefreshIcon, Edit as EditIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import PortfolioService from '../services/portfolioService';
 import MarketService from '../services/marketService';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
 const Portfolio = () => {
   const { currentUser } = useAuth();
@@ -63,6 +65,8 @@ const Portfolio = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('value');
   const [sortDir, setSortDir] = useState('desc');
+
+  const theme = useTheme();
 
   // Check if user is authenticated
   useEffect(() => {
@@ -393,6 +397,66 @@ const Portfolio = () => {
     });
   };
 
+  // Function to prepare data for pie chart
+  const preparePieChartData = () => {
+    if (!performance || !performance.holdings || performance.holdings.length === 0) {
+      return [];
+    }
+
+    // Group holdings by symbol and sum their values
+    const holdingsBySymbol = performance.holdings.reduce((acc, holding) => {
+      const symbol = holding.symbol;
+      if (!acc[symbol]) {
+        acc[symbol] = {
+          name: holding.name,
+          symbol: symbol,
+          value: 0
+        };
+      }
+      acc[symbol].value += holding.holdingValue;
+      return acc;
+    }, {});
+
+    // Convert grouped holdings to array and sort by value
+    const groupedHoldings = Object.values(holdingsBySymbol)
+      .sort((a, b) => b.value - a.value);
+    
+    // Take top 5 holdings
+    const topHoldings = groupedHoldings.slice(0, 5);
+    
+    // Calculate the sum of the remaining holdings
+    const restValue = groupedHoldings
+      .filter((_, index) => index >= 5)
+      .reduce((sum, h) => sum + h.value, 0);
+    
+    const chartData = topHoldings.map(h => ({
+      name: h.symbol,
+      value: h.value
+    }));
+    
+    // Add "Others" category if there are more than 5 unique assets
+    if (groupedHoldings.length > 5 && restValue > 0) {
+      chartData.push({
+        name: 'Others',
+        value: restValue
+      });
+    }
+    
+    return chartData;
+  };
+
+  // Update COLORS with more vibrant colors and make it a function to ensure theme is available
+  const getChartColors = () => [
+    theme.palette.primary.main,
+    '#FF6B6B', // Custom coral color
+    '#4ECDC4', // Custom teal color
+    '#FFD166', // Custom yellow color
+    '#6A0572', // Custom purple color
+    '#1A535C', // Custom dark teal
+    theme.palette.secondary.main,
+    theme.palette.grey[500],
+  ];
+
   if (!currentUser) {
     return null; // Will redirect to login via the useEffect
   }
@@ -486,6 +550,177 @@ const Portfolio = () => {
             </Card>
           </Grid>
         </Grid>
+
+        {/* Portfolio Composition Chart */}
+        <Typography variant="h5" gutterBottom sx={{ mt: 4, mb: 2 }}>
+          Portfolio Composition
+        </Typography>
+
+        {(performance?.holdings?.length === 0 || !performance?.holdings) ? (
+          <Alert severity="info" sx={{ mt: 2, mb: 4 }}>
+            You don't have any holdings yet. Add your first holding to see the portfolio composition.
+          </Alert>
+        ) : (
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            {/* Pie Chart */}
+            <Grid item xs={12} md={7}>
+              <Paper sx={{ p: 3, height: '100%' }}>
+                <Box sx={{ height: 400 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={preparePieChartData()}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        innerRadius={90}
+                        outerRadius={150}
+                        paddingAngle={4}
+                        fill="#8884d8"
+                        dataKey="value"
+                        nameKey="name"
+                        label={false}
+                      >
+                        {preparePieChartData().map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={getChartColors()[index % getChartColors().length]}
+                            stroke={theme.palette.background.paper}
+                            strokeWidth={2}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        contentStyle={{
+                          backgroundColor: theme.palette.background.paper,
+                          borderColor: theme.palette.divider,
+                          borderRadius: 8,
+                          boxShadow: theme.shadows[3],
+                          padding: 12
+                        }}
+                        itemStyle={{ color: theme.palette.text.primary }}
+                        labelStyle={{ fontWeight: 'bold', marginBottom: 5 }}
+                      />
+                      <Legend 
+                        verticalAlign="bottom" 
+                        layout="horizontal" 
+                        iconType="circle"
+                        iconSize={10}
+                        wrapperStyle={{ paddingTop: 20 }}
+                        formatter={(value, entry) => {
+                          const { payload } = entry;
+                          const percent = (payload.value / performance?.totalValue) * 100;
+                          return `${value} (${percent.toFixed(1)}%)`;
+                        }} 
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </Box>
+              </Paper>
+            </Grid>
+            
+            {/* Performance Metrics */}
+            <Grid item xs={12} md={5}>
+              <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <Typography variant="h6" gutterBottom>
+                  Performance Insights
+                </Typography>
+                
+                {/* Portfolio Metrics */}
+                <Box sx={{ mb: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                    <Typography variant="body2" color="text.secondary">Initial Investment</Typography>
+                    <Typography variant="body1" fontWeight="medium">
+                      ${performance?.totalInvestment?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                    </Typography>
+                  </Box>
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                    <Typography variant="body2" color="text.secondary">Current Value</Typography>
+                    <Typography variant="body1" fontWeight="medium">
+                      ${performance?.totalValue?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                    </Typography>
+                  </Box>
+                  
+                  <Divider sx={{ my: 2 }} />
+                  
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                    <Typography variant="body2" color="text.secondary">Total Return</Typography>
+                    <Typography 
+                      variant="body1" 
+                      fontWeight="medium"
+                      color={performance?.totalProfit >= 0 ? 'success.main' : 'error.main'}
+                    >
+                      ${performance?.totalProfit?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} 
+                      ({performance?.totalProfitPercentage >= 0 ? '+' : ''}{performance?.totalProfitPercentage?.toFixed(2) || '0.00'}%)
+                    </Typography>
+                  </Box>
+                </Box>
+                
+                {/* Best & Worst Performers */}
+                {(() => {
+                  if (!performance?.holdings || performance.holdings.length === 0) return null;
+                  
+                  // Find best and worst performing assets by percentage
+                  const sortedByPerformance = [...performance.holdings].sort((a, b) => b.profitPercentage - a.profitPercentage);
+                  const bestPerformer = sortedByPerformance[0];
+                  const worstPerformer = sortedByPerformance[sortedByPerformance.length - 1];
+                  
+                  return (
+                    <>
+                      <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+                        Top Performers
+                      </Typography>
+                      
+                      {performance.holdings.length > 0 && (
+                        <Box sx={{ mb: 2, p: 1.5, bgcolor: 'success.light', borderRadius: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="body2" fontWeight="medium">{bestPerformer.name} ({bestPerformer.symbol})</Typography>
+                            <Typography 
+                              variant="body2" 
+                              fontWeight="medium"
+                              color="success.dark"
+                            >
+                              {bestPerformer.profitPercentage >= 0 ? '+' : ''}{bestPerformer.profitPercentage.toFixed(2)}%
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2" color="text.secondary">Current: ${bestPerformer.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                            <Typography variant="body2" color="text.secondary">Bought: ${bestPerformer.purchasePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                          </Box>
+                        </Box>
+                      )}
+                      
+                      <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+                        Underperformers
+                      </Typography>
+                      
+                      {performance.holdings.length > 0 && (
+                        <Box sx={{ p: 1.5, bgcolor: 'error.light', borderRadius: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="body2" fontWeight="medium">{worstPerformer.name} ({worstPerformer.symbol})</Typography>
+                            <Typography 
+                              variant="body2" 
+                              fontWeight="medium"
+                              color="error.dark"
+                            >
+                              {worstPerformer.profitPercentage >= 0 ? '+' : ''}{worstPerformer.profitPercentage.toFixed(2)}%
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2" color="text.secondary">Current: ${worstPerformer.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                            <Typography variant="body2" color="text.secondary">Bought: ${worstPerformer.purchasePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
+                          </Box>
+                        </Box>
+                      )}
+                    </>
+                  );
+                })()}
+              </Paper>
+            </Grid>
+          </Grid>
+        )}
 
         {/* Holdings Table */}
         <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>
