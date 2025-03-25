@@ -17,8 +17,10 @@ import {
   Typography,
   Alert,
   CircularProgress,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
-import { Save as SaveIcon } from '@mui/icons-material';
+import { Save as SaveIcon, Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import * as authService from '../services/authService';
 
@@ -43,9 +45,31 @@ function Settings() {
     theme: 'light',
   });
 
+  // Password visibility states
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [message, setMessage] = useState({ type: '', text: '' });
   const [loading, setLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
+
+  // Toggle password visibility handlers
+  const handleClickShowCurrentPassword = () => {
+    setShowCurrentPassword(!showCurrentPassword);
+  };
+
+  const handleClickShowNewPassword = () => {
+    setShowNewPassword(!showNewPassword);
+  };
+
+  const handleClickShowConfirmPassword = () => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
+
+  const handleMouseDownPassword = (event) => {
+    event.preventDefault();
+  };
 
   // Load user profile data
   useEffect(() => {
@@ -275,10 +299,24 @@ function Settings() {
                         fullWidth
                         label="Current Password"
                         name="currentPassword"
-                        type="password"
+                        type={showCurrentPassword ? 'text' : 'password'}
                         value={userForm.currentPassword}
                         onChange={handleUserFormChange}
                         disabled={loading}
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton
+                                aria-label="toggle current password visibility"
+                                onClick={handleClickShowCurrentPassword}
+                                onMouseDown={handleMouseDownPassword}
+                                edge="end"
+                              >
+                                {showCurrentPassword ? <VisibilityOff /> : <Visibility />}
+                              </IconButton>
+                            </InputAdornment>
+                          )
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
@@ -286,11 +324,25 @@ function Settings() {
                         fullWidth
                         label="New Password"
                         name="newPassword"
-                        type="password"
+                        type={showNewPassword ? 'text' : 'password'}
                         value={userForm.newPassword}
                         onChange={handleUserFormChange}
                         disabled={loading}
                         helperText="Password must contain at least 8 characters, including uppercase, lowercase, number, and special character (@$!%*?&)"
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton
+                                aria-label="toggle new password visibility"
+                                onClick={handleClickShowNewPassword}
+                                onMouseDown={handleMouseDownPassword}
+                                edge="end"
+                              >
+                                {showNewPassword ? <VisibilityOff /> : <Visibility />}
+                              </IconButton>
+                            </InputAdornment>
+                          )
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12} sm={6}>
@@ -298,10 +350,24 @@ function Settings() {
                         fullWidth
                         label="Confirm New Password"
                         name="confirmPassword"
-                        type="password"
+                        type={showConfirmPassword ? 'text' : 'password'}
                         value={userForm.confirmPassword}
                         onChange={handleUserFormChange}
                         disabled={loading}
+                        InputProps={{
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton
+                                aria-label="toggle confirm password visibility"
+                                onClick={handleClickShowConfirmPassword}
+                                onMouseDown={handleMouseDownPassword}
+                                edge="end"
+                              >
+                                {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                              </IconButton>
+                            </InputAdornment>
+                          )
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12}>

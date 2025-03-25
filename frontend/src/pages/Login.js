@@ -15,7 +15,10 @@ import {
   List,
   ListItem,
   ListItemText,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import * as authService from '../services/authService';
 
@@ -51,6 +54,8 @@ function Login() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // If redirected here from another page, navigate there after login
   const from = location.state?.from?.pathname || '/portfolio';
@@ -66,6 +71,18 @@ function Login() {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleClickShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const handleClickShowConfirmPassword = () => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
+
+  const handleMouseDownPassword = (event) => {
+    event.preventDefault();
   };
 
   const handleLogin = async (e) => {
@@ -193,12 +210,26 @@ function Login() {
                 fullWidth
                 label="Password"
                 name="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={handleInputChange}
                 margin="normal"
                 required
                 disabled={isLoading}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={handleClickShowPassword}
+                        onMouseDown={handleMouseDownPassword}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
               />
               <Button
                 type="submit"
@@ -229,24 +260,52 @@ function Login() {
                 fullWidth
                 label="Password"
                 name="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={handleInputChange}
                 margin="normal"
                 required
                 disabled={isLoading}
                 helperText="Password must contain at least 8 characters, including uppercase, lowercase, number, and special character (@$!%*?&)"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={handleClickShowPassword}
+                        onMouseDown={handleMouseDownPassword}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
               />
               <TextField
                 fullWidth
                 label="Confirm Password"
                 name="confirmPassword"
-                type="password"
+                type={showConfirmPassword ? 'text' : 'password'}
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 margin="normal"
                 required
                 disabled={isLoading}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle confirm password visibility"
+                        onClick={handleClickShowConfirmPassword}
+                        onMouseDown={handleMouseDownPassword}
+                        edge="end"
+                      >
+                        {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
               />
               <Button
                 type="submit"
