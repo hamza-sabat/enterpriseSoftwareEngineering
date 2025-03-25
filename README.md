@@ -6,7 +6,7 @@ A full-stack web application for managing cryptocurrency portfolios, tracking ma
 
 ## Solution Overview
 
-The application is built using a modern tech stack with a focus on scalability, security, and user experience. It features a React-based frontend, Node.js/Express backend, and PostgreSQL database, all containerized using Docker for consistent deployment.
+The application is built using a modern tech stack with a focus on scalability, security, and user experience. It features a React-based frontend with Material UI, Node.js/Express backend, and MongoDB database with Mongoose ODM. The architecture follows a modular approach for maintainability and scalability.
 
 ## Project Aim & Objectives
 
@@ -14,25 +14,35 @@ The application is built using a modern tech stack with a focus on scalability, 
 To create a secure, scalable, and user-friendly platform for cryptocurrency portfolio management that enables users to track their investments, analyze market trends, and make informed investment decisions.
 
 ### Key Objectives
-1. Develop a comprehensive portfolio tracking system with real-time price updates and transaction history
+1. Develop a comprehensive portfolio tracking system with real-time price updates and performance analytics
 2. Create an intuitive market overview dashboard with search functionality and price trend indicators
-3. Implement secure user authentication with profile management and customisable user settings
-4. Build a responsive and user-friendly interface with mobile-first design principles
+3. Implement secure user authentication with profile management and customizable user settings
+4. Build a responsive and user-friendly interface with Material UI components
 5. Integrate with cryptocurrency APIs to provide accurate market data and portfolio valuations
+
+## Current Features
+
+### Implemented
+- **User Authentication**: Secure login and registration with JWT tokens
+- **Portfolio Management**: Add, edit, and remove cryptocurrency holdings
+- **Portfolio Analytics**: Calculate current value, profit/loss, and performance metrics
+- **Market Overview**: Browse cryptocurrency market data with search and sorting options
+- **User Settings**: Manage profile preferences including theme and currency settings
+- **Responsive Design**: Mobile-friendly UI built with Material UI components
 
 ## Enterprise Considerations
 
 ### Performance
-- Implemented efficient database queries with proper indexing
-- Used React's virtual DOM for optimized rendering
-- Implemented caching strategies for frequently accessed data
-- Optimized bundle sizes for faster load times
+- Efficient MongoDB queries with proper schema design
+- React's virtual DOM for optimized rendering
+- Separation of concerns for maintainable and scalable code
+- Optimized API calls with proper error handling
 
 ### Scalability
-- Microservices architecture for independent scaling of components
-- Containerized deployment using Docker
-- Stateless design for horizontal scaling
-- Database connection pooling and query optimization
+- Modular architecture for independent scaling of components
+- Stateless authentication design
+- Service-based backend structure
+- MongoDB for flexible document storage
 
 ### Robustness
 - Comprehensive error handling across all layers
@@ -43,13 +53,12 @@ To create a secure, scalable, and user-friendly platform for cryptocurrency port
 ### Security
 - JWT-based authentication
 - Password hashing using bcrypt
-- HTTPS encryption
 - Input validation and sanitization
 - CORS protection
 - Rate limiting for API endpoints
 
 ### Deployment
-- Docker containerization
+- 
 - GitHub Actions for CI/CD
 - Environment-based configuration
 - Monitoring and logging setup
@@ -62,12 +71,19 @@ The application follows a three-tier architecture with clear separation of conce
 ```
 frontend/
 ├── src/
-    ├── components/     # Reusable UI components (Navigation, etc.)
+    ├── components/     # Reusable UI components
     ├── pages/          # Main application views
     │   ├── Login.js    # Authentication interface
     │   ├── Market.js   # Cryptocurrency market view
     │   ├── Portfolio.js # User's portfolio management
     │   └── Settings.js # User preferences and settings
+    ├── services/       # API integration services
+    │   ├── api.js      # Base API client setup
+    │   ├── authService.js # Authentication API methods
+    │   ├── marketService.js # Market data API methods
+    │   └── portfolioService.js # Portfolio API methods
+    ├── context/        # React context providers
+    ├── utils/          # Utility functions
     ├── theme.js        # UI theme configuration
     └── App.js          # Main application component
 ```
@@ -76,64 +92,147 @@ The frontend layer is responsible for:
 - Providing an intuitive user interface
 - Handling user interactions and form submissions
 - Managing client-side state and data presentation
-- Communicating with the middleware through API calls
+- Communicating with the backend through service APIs
 - Implementing responsive design for multiple device sizes
 
-### Middleware / Services
+### Backend / API
+
+The backend is built with Node.js and Express, following a modular architecture that separates concerns and enables scalable development.
+
 ```
 backend/src/
-├── middleware/    # API middleware components
-├── routes/        # API endpoint definitions
-├── controllers/   # Request handlers and business logic
-└── utils/         # Shared utilities
-    ├── dbUtils.js # Database operations
-    └── logger.js  # Logging service
+├── middleware/     # API middleware components
+├── routes/         # API endpoint definitions
+│   ├── auth.js     # Authentication routes
+│   ├── market.js   # Market data routes
+│   └── portfolio.js # Portfolio management routes
+├── models/         # Database models and schemas
+│   ├── User.js     # User schema with authentication
+│   └── Portfolio.js # Portfolio schema with holdings
+├── services/       # Business logic services
+├── utils/          # Shared utilities
+│   └── logger.js   # Logging service
+├── app.js          # Express application setup
+└── index.js        # Server initialization
 ```
 
-The middleware layer acts as a bridge between the frontend and backend, handling:
+#### Database Implementation
+
+The application uses MongoDB with Mongoose ODM for data persistence, providing a flexible, schema-based solution:
+
+- **User Model**: Manages user authentication, profile information, and application settings.
+  - Includes secure password hashing with bcrypt
+  - Implements methods for validating credentials
+  - Stores user preferences like theme and currency settings
+
+- **Portfolio Model**: Handles cryptocurrency holdings and investment tracking.
+  - Schema includes holdings with cryptoId, amount, purchase price, and date
+  - Pre-save hooks calculate total investment values
+  - Supports custom methods for portfolio analytics
+
+#### Services Layer
+
+The services layer encapsulates business logic and external API integrations:
+
+- **Auth Service**: Handles JWT token generation, validation, and user authentication
+- **Market Service**: Integrates with cryptocurrency APIs to fetch market data
+- **Portfolio Service**: Implements portfolio calculations and investment tracking logic
+
+#### Controllers & Routes
+
+The application uses a RESTful API design with controllers for managing resource operations:
+
+- **Auth Routes**: `/api/auth/`
+  - Registration, login, and user information endpoints
+  - Token-based authentication
+
+- **Market Routes**: `/api/market/`
+  - Cryptocurrency listings with pricing information
+  - Global market data and metrics
+  - Search and filtering capabilities
+
+- **Portfolio Routes**: `/api/portfolio/`
+  - CRUD operations for portfolio holdings
+  - Performance calculation endpoints
+  - User-specific portfolio data
+
+#### Error Handling & Logging
+
+The backend implements comprehensive error handling:
+
+- Centralized error processing for consistent API responses
+- Detailed logging with Winston for debugging and monitoring
+- Error categorization with appropriate HTTP status codes
+
+The backend layer is responsible for:
 - API routing and request processing
 - Authentication and authorization
 - Business logic implementation
+- Database operations and data modeling
 - Error handling and logging
-- Request validation
-- Rate limiting and security measures
 
-### Backend (Data Storage & Processing)
+## Middleware Layer
+
+The middleware layer plays a critical role in the application architecture, functioning as the intermediary processing layer between incoming requests and route handlers. This layer enhances the application's security, performance, and maintainability.
+
+### Key Middleware Components
+
+- **Authentication Middleware**: Validates JWT tokens to ensure users are authenticated before accessing protected routes. This middleware extracts user information from tokens and makes it available to route handlers.
+
+- **Error Handling Middleware**: Provides centralized error processing, ensuring consistent error responses across the API and proper logging of errors for troubleshooting.
+
+- **Request Validation**: Validates incoming request data against defined schemas to ensure data integrity before it reaches the database or business logic.
+
+- **Logging Middleware**: Records API requests and responses for monitoring, debugging, and audit purposes using Winston logger.
+
+- **CORS Middleware**: Manages Cross-Origin Resource Sharing to control which domains can interact with the API, enhancing security.
+
+### Middleware Implementation
+
+```javascript
+// Example of the authentication middleware
+const authenticate = async (req, res, next) => {
+  try {
+    // Extract token from request header
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    // Verify token and extract user data
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Make user data available for route handlers
+    req.user = decoded;
+    next();
+  } catch (error) {
+    logger.error(`Authentication error: ${error.message}`);
+    res.status(401).json({ error: 'Invalid authentication token' });
+  }
+};
 ```
-backend/src/
-├── database/     # Database configuration and connection
-├── models/       # Database models and schemas
-└── index.js      # Main server configuration
-```
 
-The backend layer is responsible for:
-- Database connection management
-- Data modeling and relationships
-- Data persistence and retrieval
-- Data validation and integrity
-- Complex query execution
+The middleware layer provides these key benefits:
 
-This architecture ensures:
-- Clear separation of concerns
-- Scalable and maintainable codebase
-- Secure data handling
-- Efficient communication between layers
-- Independent development and testing of each layer
+- **Separation of Concerns**: Keeps authentication, validation, and other cross-cutting concerns separate from business logic
+- **Code Reusability**: Common operations like authentication are implemented once and used across multiple routes
+- **Security Enhancement**: Consistent application of security checks before request processing
+- **Maintainability**: Centralized implementation of cross-cutting functionality makes the codebase easier to maintain
 
 ## Installation & Usage Instructions
 
 ### Prerequisites
 - Node.js (v14 or higher)
-- Docker and Docker Compose
-- PostgreSQL (v13 or higher)
+- MongoDB (v4 or higher)
 - Git
 
 ### Setup Steps
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/hamza-sabat/enterpriseSoftwareEngineering.git
-cd enterpriseSoftwareEngineering
+git clone https://github.com/yourusername/crypto-portfolio.git
+cd crypto-portfolio
 ```
 
 2. Install dependencies:
@@ -151,11 +250,7 @@ npm install
 ```bash
 # Backend (.env)
 PORT=3001
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=crypto_portfolio
-DB_USER=your_username
-DB_PASSWORD=your_password
+MONGODB_URI=mongodb://localhost:27017/crypto_portfolio
 JWT_SECRET=your_jwt_secret
 
 # Frontend (.env)
@@ -173,52 +268,62 @@ cd frontend
 npm start
 ```
 
-## Feature Overview
+## Feature Details
 
 ### Authentication System
-- Location: `frontend/src/pages/Login.js`
-- Purpose: Secure user authentication and registration
-- Components: Login form, Registration form, JWT token management
+- Location: `frontend/src/pages/Login.js` & `backend/src/routes/auth.js`
+- Secure user authentication with JWT tokens
+- Password hashing with bcrypt
+- Login and registration forms with validation
 
 ### Market Overview
-- Location: `frontend/src/pages/Market.js`
-- Purpose: Display real-time cryptocurrency prices and market trends
-- Features: Search functionality, Price tracking, 24h change indicators
+- Location: `frontend/src/pages/Market.js` & `backend/src/routes/market.js`
+- Display real-time cryptocurrency prices and market trends
+- Search and filtering functionality
+- Sorting options by various metrics
+- 24h change indicators with visual cues
 
 ### Portfolio Management
-- Location: `frontend/src/pages/Portfolio.js`
-- Purpose: Track and manage cryptocurrency holdings
-- Features: Portfolio value calculation, Holdings table, Add/Remove assets
+- Location: `frontend/src/pages/Portfolio.js` & `backend/src/routes/portfolio.js`
+- Add, edit, and remove cryptocurrency holdings
+- Automatic calculation of current values and profit/loss
+- Performance metrics including total portfolio value
+- Support for notes and purchase date tracking
 
 ### User Settings
 - Location: `frontend/src/pages/Settings.js`
-- Purpose: Manage user preferences and account settings
-- Features: Profile settings, Display preferences, Notification settings
-
-### Navigation
-- Location: `frontend/src/components/Navigation.js`
-- Purpose: Provide consistent navigation across the application
-- Features: Responsive sidebar, Route management, User menu
+- Profile information management
+- Theme preferences (light/dark mode)
+- Currency display options
+- Notification settings
 
 ## Project Structure
 
 ```
-enterpriseSoftwareEngineering/
+crypto-portfolio/
 ├── frontend/
+│   ├── public/
 │   ├── src/
 │   │   ├── components/
+│   │   ├── context/
 │   │   ├── pages/
+│   │   ├── services/
+│   │   ├── utils/
 │   │   ├── theme.js
 │   │   └── App.js
 │   └── package.json
 ├── backend/
+│   ├── logs/
 │   ├── src/
 │   │   ├── controllers/
+│   │   ├── middleware/
 │   │   ├── models/
 │   │   ├── routes/
-│   │   └── server.js
+│   │   ├── services/
+│   │   ├── utils/
+│   │   ├── app.js
+│   │   └── index.js
 │   └── package.json
-├── docker-compose.yml
 └── README.md
 ```
 
