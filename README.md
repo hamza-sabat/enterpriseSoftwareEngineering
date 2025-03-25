@@ -16,7 +16,7 @@ To create a secure, scalable, and user-friendly platform for cryptocurrency port
 ### Key Objectives
 1. Develop a comprehensive portfolio tracking system with real-time price updates and transaction history
 2. Create an intuitive market overview dashboard with search functionality and price trend indicators
-3. Implement secure user authentication with profile management and customizable settings
+3. Implement secure user authentication with profile management and customisable user settings
 4. Build a responsive and user-friendly interface with mobile-first design principles
 5. Integrate with cryptocurrency APIs to provide accurate market data and portfolio valuations
 
