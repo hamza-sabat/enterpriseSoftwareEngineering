@@ -2,6 +2,7 @@ const express = require('express');
 const { generateToken } = require('../middleware/auth');
 const User = require('../models/User');
 const { logger } = require('../utils/logger');
+const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -12,37 +13,40 @@ const router = express.Router();
  */
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password } = req.body;
     
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ 
-        error: 'User already exists with this email' 
-      });
+      return res.status(400).json({ message: 'User already exists with this email' });
     }
     
     // Create new user
     const user = new User({
       email,
       password,
-      firstName,
-      lastName
     });
     
     await user.save();
     
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user);
     
-    // Return user data (without password) and token
+    // Don't send password back to client
+    const userResponse = {
+      id: user._id,
+      email: user.email,
+      name: user.name,
+    };
+    
     res.status(201).json({
-      user: user.toPublic(),
-      token
+      message: 'User registered successfully',
+      user: userResponse,
+      token,
     });
   } catch (error) {
-    logger.error(`Registration error: ${error.message}`);
-    res.status(500).json({ error: 'Server error during registration' });
+    logger.error('Error in user registration:', error);
+    res.status(500).json({ message: 'Server error during registration' });
   }
 });
 
@@ -55,29 +59,110 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    // Find user
+    // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
     
-    // Check password
+    // Verify password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
     
     // Generate token
-    const token = generateToken(user._id);
+    const token = generateToken(user);
     
-    // Return user data and token
-    res.json({
-      user: user.toPublic(),
-      token
+    // Don't send password back to client
+    const userResponse = {
+      id: user._id,
+      email: user.email,
+      name: user.name,
+    };
+    
+    res.status(200).json({
+      message: 'Login successful',
+      user: userResponse,
+      token,
     });
   } catch (error) {
-    logger.error(`Login error: ${error.message}`);
-    res.status(500).json({ error: 'Server error during login' });
+    logger.error('Error in user login:', error);
+    res.status(500).json({ message: 'Server error during login' });
+  }
+});
+
+// Get user profile
+router.get('/profile', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json(user);
+  } catch (error) {
+    logger.error('Error fetching user profile:', error);
+    res.status(500).json({ message: 'Server error while fetching profile' });
+  }
+});
+
+// Update user profile
+router.put('/profile', authenticate, async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    
+    // Find user and update
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Only update fields that were provided
+    if (name) user.name = name;
+    if (email) user.email = email;
+
+    await user.save();
+
+    // Return updated user without password
+    const updatedUser = await User.findById(req.user.id).select('-password');
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    logger.error('Error updating user profile:', error);
+    res.status(500).json({ message: 'Server error while updating profile' });
+  }
+});
+
+// Update user password
+router.put('/password', authenticate, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current password and new password are required' });
+    }
+    
+    // Find user
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Verify current password
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+    
+    // Update password
+    user.password = newPassword;
+    await user.save();
+    
+    res.status(200).json({ message: 'Password updated successfully' });
+  } catch (error) {
+    logger.error('Error updating password:', error);
+    res.status(500).json({ message: 'Server error while updating password' });
   }
 });
 
