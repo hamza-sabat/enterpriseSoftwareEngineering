@@ -3,6 +3,7 @@ const { generateToken } = require('../middleware/auth');
 const User = require('../models/User');
 const { logger } = require('../utils/logger');
 const { authenticate } = require('../middleware/auth');
+const mongoose = require('mongoose');
 
 const router = express.Router();
 
@@ -13,7 +14,7 @@ const router = express.Router();
  */
 router.post('/register', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, name } = req.body;
     
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -25,6 +26,7 @@ router.post('/register', async (req, res) => {
     const user = new User({
       email,
       password,
+      name
     });
     
     await user.save();
@@ -132,26 +134,84 @@ router.get('/profile', authenticate, async (req, res) => {
 // Update user profile
 router.put('/profile', authenticate, async (req, res) => {
   try {
+    console.log('Profile update request received:', req.body);
+    console.log('User from token:', req.user);
+    
+    // Make sure we have a valid user ID
+    if (!req.user || !req.user.id) {
+      console.error('No user ID found in request');
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    
     const { name, email } = req.body;
     
-    // Find user and update
-    const user = await User.findById(req.user.id);
+    console.log('Attempting to find user with ID:', req.user.id);
+    
+    // Find user and update - Convert string ID to ObjectId if needed
+    let userId;
+    try {
+      userId = mongoose.Types.ObjectId(req.user.id);
+    } catch (e) {
+      console.error('Invalid ID format:', e);
+      userId = req.user.id; // fallback to using the ID as is
+    }
+    
+    const user = await User.findById(userId);
     if (!user) {
+      console.error('User not found with ID:', req.user.id);
       return res.status(404).json({ message: 'User not found' });
     }
 
+    console.log('User found:', user.email);
+    
     // Only update fields that were provided
-    if (name) user.name = name;
-    if (email) user.email = email;
+    if (name !== undefined) {
+      console.log('Updating name to:', name);
+      user.name = name;
+    }
+    
+    if (email !== undefined && email !== user.email) {
+      console.log('Updating email from', user.email, 'to:', email);
+      // If changing email, check if the new email already exists
+      const existingUser = await User.findOne({ email });
+      if (existingUser && existingUser._id.toString() !== user._id.toString()) {
+        return res.status(400).json({ message: 'Email already in use' });
+      }
+      user.email = email;
+    }
 
-    await user.save();
+    // Update the updatedAt field
+    user.updatedAt = Date.now();
+
+    console.log('User object before save:', JSON.stringify(user.toObject ? user.toObject() : user, null, 2));
+    
+    try {
+      // Save the user
+      await user.save();
+      console.log('User saved successfully');
+    } catch (saveError) {
+      console.error('Error during user.save():', saveError);
+      if (saveError.name === 'ValidationError') {
+        console.error('Validation errors:', saveError.errors);
+        return res.status(400).json({ 
+          message: 'Validation failed', 
+          errors: Object.keys(saveError.errors).reduce((acc, key) => {
+            acc[key] = saveError.errors[key].message;
+            return acc;
+          }, {})
+        });
+      }
+      throw saveError; // rethrow if it's not a validation error
+    }
 
     // Return updated user without password
-    const updatedUser = await User.findById(req.user.id).select('-password');
+    const updatedUser = await User.findById(userId).select('-password');
     res.status(200).json(updatedUser);
   } catch (error) {
-    logger.error('Error updating user profile:', error);
-    res.status(500).json({ message: 'Server error while updating profile' });
+    console.error('Error updating user profile:', error.name, error.message);
+    console.error('Error stack:', error.stack);
+    logger.error('Error updating user profile:', { error: error.message, stack: error.stack });
+    res.status(500).json({ message: 'Server error while updating profile', error: error.message });
   }
 });
 
