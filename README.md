@@ -54,6 +54,72 @@ To create a secure, scalable, and user-friendly platform for cryptocurrency port
 - Environment-based configuration
 - Monitoring and logging setup
 
+## Architecture
+
+The application follows a three-tier architecture with clear separation of concerns:
+
+### Frontend (User Interface)
+```
+frontend/
+├── src/
+    ├── components/     # Reusable UI components (Navigation, etc.)
+    ├── pages/          # Main application views
+    │   ├── Login.js    # Authentication interface
+    │   ├── Market.js   # Cryptocurrency market view
+    │   ├── Portfolio.js # User's portfolio management
+    │   └── Settings.js # User preferences and settings
+    ├── theme.js        # UI theme configuration
+    └── App.js          # Main application component
+```
+
+The frontend layer is responsible for:
+- Providing an intuitive user interface
+- Handling user interactions and form submissions
+- Managing client-side state and data presentation
+- Communicating with the middleware through API calls
+- Implementing responsive design for multiple device sizes
+
+### Middleware / Services
+```
+backend/src/
+├── middleware/    # API middleware components
+├── routes/        # API endpoint definitions
+├── controllers/   # Request handlers and business logic
+└── utils/         # Shared utilities
+    ├── dbUtils.js # Database operations
+    └── logger.js  # Logging service
+```
+
+The middleware layer acts as a bridge between the frontend and backend, handling:
+- API routing and request processing
+- Authentication and authorization
+- Business logic implementation
+- Error handling and logging
+- Request validation
+- Rate limiting and security measures
+
+### Backend (Data Storage & Processing)
+```
+backend/src/
+├── database/     # Database configuration and connection
+├── models/       # Database models and schemas
+└── index.js      # Main server configuration
+```
+
+The backend layer is responsible for:
+- Database connection management
+- Data modeling and relationships
+- Data persistence and retrieval
+- Data validation and integrity
+- Complex query execution
+
+This architecture ensures:
+- Clear separation of concerns
+- Scalable and maintainable codebase
+- Secure data handling
+- Efficient communication between layers
+- Independent development and testing of each layer
+
 ## Installation & Usage Instructions
 
 ### Prerequisites
