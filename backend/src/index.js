@@ -6,6 +6,17 @@ const rateLimit = require('express-rate-limit');
 const { logger, stream } = require('./utils/logger');
 require('dotenv').config();
 
+// Import database connection
+require('./database/config');
+
+// Import models
+const User = require('./models/User');
+const Portfolio = require('./models/Portfolio');
+
+// Import routes
+const authRoutes = require('./routes/auth');
+const portfolioRoutes = require('./routes/portfolio');
+
 // Initialize express app
 const app = express();
 
@@ -30,6 +41,37 @@ app.use(express.urlencoded({ extended: true }));
 // Compression middleware
 app.use(compression());
 
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/portfolio', portfolioRoutes);
+
+// Test MongoDB connection
+app.get('/api/test-db', async (req, res) => {
+  try {
+    // Just test that we can create a user model instance
+    const testUser = new User({
+      email: 'test@example.com',
+      password: 'password123',
+      firstName: 'Test',
+      lastName: 'User'
+    });
+    
+    logger.info('MongoDB connection is working');
+    res.status(200).json({ 
+      status: 'OK', 
+      message: 'MongoDB connection is working',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logger.error(`Database connection error: ${error.message}`);
+    res.status(500).json({ 
+      status: 'Error', 
+      message: 'Could not connect to database',
+      error: error.message
+    });
+  }
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
@@ -51,6 +93,7 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   logger.info(`Server is running on port ${PORT}`);
+  logger.info(`Environment: ${process.env.NODE_ENV}`);
 });
 
 // Handle uncaught exceptions
