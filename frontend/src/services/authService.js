@@ -26,7 +26,7 @@ api.interceptors.request.use(
 
 export const login = async (email, password) => {
   try {
-    const response = await api.post('/auth/login', { email, password });
+    const response = await api.post('/api/auth/login', { email, password });
     return response.data;
   } catch (error) {
     if (error.response && error.response.data) {
@@ -38,7 +38,7 @@ export const login = async (email, password) => {
 
 export const register = async (email, password, name) => {
   try {
-    const response = await api.post('/auth/register', { email, password, name });
+    const response = await api.post('/api/auth/register', { email, password, name });
     return response.data;
   } catch (error) {
     // Check if this is a validation error with specific field errors
@@ -62,7 +62,7 @@ export const register = async (email, password, name) => {
 
 export const getUserProfile = async () => {
   try {
-    const response = await api.get('/auth/profile');
+    const response = await api.get('/api/auth/profile');
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to fetch profile');
@@ -72,7 +72,7 @@ export const getUserProfile = async () => {
 export const updateUserProfile = async (userData) => {
   try {
     console.log('Sending profile update request with data:', userData);
-    const response = await api.put('/auth/profile', userData);
+    const response = await api.put('/api/auth/profile', userData);
     console.log('Profile update response:', response.data);
     return response.data;
   } catch (error) {
@@ -98,7 +98,7 @@ export const updateUserProfile = async (userData) => {
 
 export const updatePassword = async (currentPassword, newPassword) => {
   try {
-    const response = await api.put('/auth/password', { currentPassword, newPassword });
+    const response = await api.put('/api/auth/password', { currentPassword, newPassword });
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to update password');
