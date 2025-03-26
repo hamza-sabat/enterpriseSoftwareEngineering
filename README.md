@@ -556,7 +556,7 @@ To run this application, you'll need the following technologies installed on you
    **Backend (.env)**:
    ```
    # Server configuration
-   PORT=5000
+   PORT=3001
    NODE_ENV=development
 
    # Database configuration
@@ -575,7 +575,7 @@ To run this application, you'll need the following technologies installed on you
 
    **Frontend (.env)**:
    ```
-   REACT_APP_API_URL=http://localhost:5000/api
+   REACT_APP_API_URL=http://localhost:3001/api
    REACT_APP_ENV=development
    ```
 
@@ -592,7 +592,7 @@ To run this application, you'll need the following technologies installed on you
    # or with yarn
    # yarn dev
    ```
-   The server will start at: `http://localhost:5000`
+   The server will start at: `http://localhost:3001`
 
 2. **Start the frontend development server**:
    ```bash
@@ -676,7 +676,7 @@ The Render deployment will automatically handle building and deploying your appl
 
 ### API Documentation
 
-The API is available at `http://localhost:5000/api` with the following main endpoints:
+The API is available at `http://localhost:3001/api` with the following main endpoints:
 - `/api/auth` - Authentication endpoints
 - `/api/market` - Market data endpoints
 - `/api/portfolio` - Portfolio management endpoints
