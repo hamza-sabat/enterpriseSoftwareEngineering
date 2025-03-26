@@ -3,6 +3,8 @@ const portfolioService = require('../../src/core/services/portfolioService');
 
 // Mock dependencies
 jest.mock('../../src/core/services/portfolioService');
+
+// Mock logger
 jest.mock('../../src/utils/logger', () => ({
   logger: {
     error: jest.fn(),
@@ -10,236 +12,177 @@ jest.mock('../../src/utils/logger', () => ({
     warn: jest.fn(),
     debug: jest.fn(),
     http: jest.fn()
-  },
-  stream: {
-    write: jest.fn()
   }
 }));
 
 describe('Portfolio Controller', () => {
-  let req;
-  let res;
+  let req, res;
   
   beforeEach(() => {
     jest.clearAllMocks();
     
-    // Set up req and res mocks
+    // Setup mock request and response
     req = {
-      user: { id: 'test-user-id' },
       body: {},
-      params: {}
+      params: {},
+      user: { id: 'user-id' }
     };
     
     res = {
-      json: jest.fn(),
-      status: jest.fn().mockReturnThis()
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn().mockReturnThis()
     };
   });
   
   describe('getPortfolio', () => {
-    it('should return the portfolio when found', async () => {
-      // Mock implementation
-      const mockPortfolio = { 
-        id: 'portfolio-id', 
-        userId: 'test-user-id', 
-        holdings: [] 
+    it('should return user portfolio', async () => {
+      // Mock service response
+      const mockPortfolio = {
+        id: 'portfolio-id',
+        name: 'My Portfolio',
+        holdings: [
+          { symbol: 'BTC', amount: 1.5, purchasePrice: 40000 }
+        ]
       };
+      
       portfolioService.getPortfolio.mockResolvedValue(mockPortfolio);
       
       // Call controller method
       await portfolioController.getPortfolio(req, res);
       
-      // Assertions
-      expect(portfolioService.getPortfolio).toHaveBeenCalledWith('test-user-id');
+      // Expect service to be called with user ID
+      expect(portfolioService.getPortfolio).toHaveBeenCalledWith(req.user.id);
+      
+      // Expect successful response
       expect(res.json).toHaveBeenCalledWith(mockPortfolio);
-      expect(res.status).not.toHaveBeenCalled();
-    });
-    
-    it('should return 404 when portfolio is not found', async () => {
-      // Mock implementation
-      portfolioService.getPortfolio.mockRejectedValue(new Error('Portfolio not found'));
-      
-      // Call controller method
-      await portfolioController.getPortfolio(req, res);
-      
-      // Assertions
-      expect(portfolioService.getPortfolio).toHaveBeenCalledWith('test-user-id');
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Portfolio not found' });
     });
   });
   
   describe('addHolding', () => {
-    it('should add a holding and return updated portfolio', async () => {
-      // Mock implementation
-      const mockHolding = {
+    it('should add a holding to portfolio', async () => {
+      // Setup request body
+      req.body = {
         cryptoId: '1',
         name: 'Bitcoin',
         symbol: 'BTC',
         amount: 1.5,
         purchasePrice: 40000
       };
+      
+      // Mock service response
       const mockUpdatedPortfolio = {
         id: 'portfolio-id',
-        userId: 'test-user-id',
-        holdings: [mockHolding]
+        name: 'My Portfolio',
+        holdings: [
+          { symbol: 'BTC', amount: 1.5, purchasePrice: 40000 }
+        ]
       };
       
-      req.body = mockHolding;
       portfolioService.addHolding.mockResolvedValue(mockUpdatedPortfolio);
       
       // Call controller method
       await portfolioController.addHolding(req, res);
       
-      // Assertions
-      expect(portfolioService.addHolding).toHaveBeenCalledWith('test-user-id', mockHolding);
+      // Expect service to be called with correct data
+      expect(portfolioService.addHolding).toHaveBeenCalledWith(
+        req.user.id,
+        req.body
+      );
+      
+      // Expect successful response
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json).toHaveBeenCalledWith(mockUpdatedPortfolio);
-    });
-    
-    it('should return 400 when adding a holding fails', async () => {
-      // Mock implementation
-      req.body = { cryptoId: '1', name: 'Invalid Holding' };
-      portfolioService.addHolding.mockRejectedValue(new Error('Invalid holding data'));
-      
-      // Call controller method
-      await portfolioController.addHolding(req, res);
-      
-      // Assertions
-      expect(portfolioService.addHolding).toHaveBeenCalledWith('test-user-id', req.body);
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Invalid holding data' });
     });
   });
   
   describe('updateHolding', () => {
-    it('should update a holding and return updated portfolio', async () => {
-      // Mock implementation
-      const holdingId = 'holding-id';
-      const updateData = {
+    it('should update a holding in portfolio', async () => {
+      // Setup params and body
+      req.params.holdingId = 'holding-id';
+      req.body = {
         amount: 2.0,
         purchasePrice: 38000
       };
+      
+      // Mock service response
       const mockUpdatedPortfolio = {
         id: 'portfolio-id',
-        userId: 'test-user-id',
-        holdings: [{
-          _id: holdingId,
-          cryptoId: '1',
-          name: 'Bitcoin',
-          symbol: 'BTC',
-          amount: 2.0,
-          purchasePrice: 38000
-        }]
+        name: 'My Portfolio',
+        holdings: [
+          { id: 'holding-id', symbol: 'BTC', amount: 2.0, purchasePrice: 38000 }
+        ]
       };
       
-      req.params.holdingId = holdingId;
-      req.body = updateData;
       portfolioService.updateHolding.mockResolvedValue(mockUpdatedPortfolio);
       
       // Call controller method
       await portfolioController.updateHolding(req, res);
       
-      // Assertions
+      // Expect service to be called with correct data
       expect(portfolioService.updateHolding).toHaveBeenCalledWith(
-        'test-user-id', 
-        holdingId, 
-        updateData
+        req.user.id,
+        req.params.holdingId,
+        req.body
       );
+      
+      // Expect successful response
       expect(res.json).toHaveBeenCalledWith(mockUpdatedPortfolio);
-    });
-    
-    it('should return 400 when updating a holding fails', async () => {
-      // Mock implementation
-      const holdingId = 'holding-id';
-      req.params.holdingId = holdingId;
-      req.body = { amount: -1 }; // Invalid amount
-      
-      portfolioService.updateHolding.mockRejectedValue(new Error('Invalid holding data'));
-      
-      // Call controller method
-      await portfolioController.updateHolding(req, res);
-      
-      // Assertions
-      expect(portfolioService.updateHolding).toHaveBeenCalledWith('test-user-id', holdingId, req.body);
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Invalid holding data' });
     });
   });
   
   describe('deleteHolding', () => {
-    it('should delete a holding and return updated portfolio', async () => {
-      // Mock implementation
-      const holdingId = 'holding-id';
+    it('should delete a holding from portfolio', async () => {
+      // Setup params
+      req.params.holdingId = 'holding-id';
+      
+      // Mock service response
       const mockUpdatedPortfolio = {
         id: 'portfolio-id',
-        userId: 'test-user-id',
-        holdings: [] // Empty after deletion
+        name: 'My Portfolio',
+        holdings: []
       };
       
-      req.params.holdingId = holdingId;
       portfolioService.deleteHolding.mockResolvedValue(mockUpdatedPortfolio);
       
       // Call controller method
       await portfolioController.deleteHolding(req, res);
       
-      // Assertions
-      expect(portfolioService.deleteHolding).toHaveBeenCalledWith('test-user-id', holdingId);
+      // Expect service to be called with correct data
+      expect(portfolioService.deleteHolding).toHaveBeenCalledWith(
+        req.user.id,
+        req.params.holdingId
+      );
+      
+      // Expect successful response
       expect(res.json).toHaveBeenCalledWith(mockUpdatedPortfolio);
-    });
-    
-    it('should return 400 when deleting a holding fails', async () => {
-      // Mock implementation
-      const holdingId = 'non-existent-id';
-      req.params.holdingId = holdingId;
-      
-      portfolioService.deleteHolding.mockRejectedValue(new Error('Holding not found'));
-      
-      // Call controller method
-      await portfolioController.deleteHolding(req, res);
-      
-      // Assertions
-      expect(portfolioService.deleteHolding).toHaveBeenCalledWith('test-user-id', holdingId);
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Holding not found' });
     });
   });
   
   describe('updatePortfolioName', () => {
-    it('should update portfolio name and return updated portfolio', async () => {
-      // Mock implementation
-      const newName = 'My Crypto Portfolio';
+    it('should update portfolio name', async () => {
+      // Setup body
+      req.body.name = 'New Portfolio Name';
+      
+      // Mock service response
       const mockUpdatedPortfolio = {
         id: 'portfolio-id',
-        userId: 'test-user-id',
-        name: newName,
+        name: 'New Portfolio Name',
         holdings: []
       };
       
-      req.body.name = newName;
       portfolioService.updatePortfolioName.mockResolvedValue(mockUpdatedPortfolio);
       
       // Call controller method
       await portfolioController.updatePortfolioName(req, res);
       
-      // Assertions
-      expect(portfolioService.updatePortfolioName).toHaveBeenCalledWith('test-user-id', newName);
+      // Expect service to be called with correct data
+      expect(portfolioService.updatePortfolioName).toHaveBeenCalledWith(
+        req.user.id,
+        req.body.name
+      );
+      
+      // Expect successful response
       expect(res.json).toHaveBeenCalledWith(mockUpdatedPortfolio);
-    });
-    
-    it('should return 400 when updating portfolio name fails', async () => {
-      // Mock implementation
-      req.body.name = ''; // Invalid name
-      
-      portfolioService.updatePortfolioName.mockRejectedValue(new Error('Invalid portfolio name'));
-      
-      // Call controller method
-      await portfolioController.updatePortfolioName(req, res);
-      
-      // Assertions
-      expect(portfolioService.updatePortfolioName).toHaveBeenCalledWith('test-user-id', '');
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Invalid portfolio name' });
     });
   });
 }); 

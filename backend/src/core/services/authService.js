@@ -1,5 +1,5 @@
 const User = require('../models/User');
-const { generateToken } = require('../middleware/auth');
+const { generateToken } = require('../../middleware/security/auth');
 const { logger } = require('../../utils/logger');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
