@@ -1,5 +1,5 @@
 const marketService = require('../services/marketService');
-const { logger } = require('../utils/logger');
+const { logger } = require('../../utils/logger');
 
 /**
  * Controller for handling market-related API requests

@@ -1,8 +1,7 @@
 const express = require('express');
-const { generateToken } = require('../middleware/auth');
+const { generateToken, authenticate } = require('../../middleware/security/auth');
 const User = require('../models/User');
-const { logger } = require('../utils/logger');
-const { authenticate } = require('../middleware/auth');
+const { logger } = require('../../utils/logger');
 const mongoose = require('mongoose');
 
 const router = express.Router();

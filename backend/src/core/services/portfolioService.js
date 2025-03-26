@@ -1,5 +1,5 @@
 const Portfolio = require('../models/Portfolio');
-const logger = require('../utils/logger');
+const logger = require('../../utils/logger').logger;
 
 class PortfolioService {
     async getPortfolio(userId) {

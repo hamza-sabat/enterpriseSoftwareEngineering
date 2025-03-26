@@ -46,3 +46,41 @@
 2025-03-25 18:53:08:538 [33mwarn[39m: [33mPort 3001 is already in use, trying port 30011[39m
 2025-03-25 18:53:08:538 [32minfo[39m: [32mServer running on port 30011[39m
 2025-03-25 18:53:08:538 [32minfo[39m: [32mConnected to MongoDB Atlas successfully[39m
+2025-03-26 01:30:39:3039 [32minfo[39m: [32mServer running on port 3001[39m
+2025-03-26 01:30:39:3039 [32minfo[39m: [32mConnected to MongoDB Atlas successfully[39m
+2025-03-26 01:38:38:3838 [32minfo[39m: [32mServer running on port 3001[39m
+2025-03-26 01:38:39:3839 [32minfo[39m: [32mConnected to MongoDB Atlas successfully[39m
+2025-03-26 01:51:45:5145 [32minfo[39m: [32mServer running on port 3001[39m
+2025-03-26 01:51:46:5146 [32minfo[39m: [32mConnected to MongoDB Atlas successfully[39m
+2025-03-26 01:52:49:5249 [32minfo[39m: [32mAdded new holding[39m
+2025-03-26 01:53:37:5337 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:37:5337 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:37:5337 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:40:5340 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:40:5340 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:40:5340 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:41:5341 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:41:5341 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:43:5343 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:43:5343 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:43:5343 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:43:5343 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:44:5344 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:44:5344 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:44:5344 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:44:5344 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:53:44:5344 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:54:13:5413 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:54:13:5413 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:54:15:5415 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:54:15:5415 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:54:15:5415 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:54:18:5418 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:54:18:5418 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:54:20:5420 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:54:20:5420 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:54:20:5420 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:54:22:5422 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:54:23:5423 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:55:09:559 [33mwarn[39m: [33mRate limit exceeded for IP: ::1[39m
+2025-03-26 01:55:28:5528 [33mwarn[39m: [33mMongoDB disconnected[39m

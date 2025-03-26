@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const { logger } = require('../utils/logger');
+const User = require('../../core/models/User');
+const { logger } = require('../../utils/logger');
 
 // Load JWT secret from environment variables
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
