@@ -6,7 +6,7 @@ const mongoose = require('./middleware/database/config');
 const authRoutes = require('./core/routes/auth');
 const portfolioRoutes = require('./core/routes/portfolio');
 const marketRoutes = require('./core/routes/market');
-const { logger } = require('./middleware/logging/logger');
+const { logger } = require('./utils/logger');
 const { rateLimiter } = require('./middleware/security/rateLimiter');
 const { errorHandler } = require('./middleware/error/errorHandler');
 

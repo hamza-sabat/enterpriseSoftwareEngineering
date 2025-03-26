@@ -1,4 +1,4 @@
-const { logger } = require('./middleware/logging/logger');
+const { logger } = require('./utils/logger');
 const app = require('./app');
 
 // Load environment variables
