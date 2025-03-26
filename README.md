@@ -67,11 +67,11 @@ The application follows a **distinct three-layer architecture** that ensures sep
 - **Location**: `/backend/src/middleware` directory
 - **Responsibility**: Request processing, authentication, validation, error handling
 - **Key Components**:
-  - Authentication middleware (`/backend/src/middleware/auth.js`)
-  - Validation middleware (`/backend/src/middleware/validation.js`) 
-  - Error handling middleware (`/backend/src/middleware/error.js`)
-  - Request logging (`/backend/src/middleware/logger.js`)
-  - CORS and rate limiting
+  - Authentication middleware (`/backend/src/middleware/auth.js`) - JWT token validation
+  - Cache middleware (`/backend/src/middleware/cache.js`) - Response caching for performance
+  - Rate limiting middleware (`/backend/src/middleware/rateLimiter.js`) - Request frequency control
+  - Error handling (implemented directly in `app.js`) - Centralized error processing
+  - Security and CORS middleware (implemented in `app.js`) - Using Helmet and CORS packages
 
 #### Services Layer
 - **Technology**: Node.js service modules
@@ -344,229 +344,170 @@ The backend implements comprehensive error handling to ensure consistent API res
 
 The middleware layer plays a critical role in the application architecture, functioning as the intermediary processing layer between incoming requests and route handlers. This layer enhances the application's security, performance, and maintainability.
 
+### Middleware Implementation
+
+The application implements middleware at different levels:
+
+1. **Global Middleware (app.js)**: Applied to all routes
+   - Helmet (security headers)
+   - CORS configuration
+   - Global rate limiting
+   - Body parsing (express.json and urlencoded)
+   - Compression
+   - Basic error handling
+
+2. **Route-Level Middleware**: Applied to specific route groups
+   - Authentication middleware for protected routes
+   
+3. **Custom Middleware Files**:
+   - Authentication (`backend/src/middleware/auth.js`)
+   - Cache management (`backend/src/middleware/cache.js`)
+   - Rate limiting (`backend/src/middleware/rateLimiter.js`)
+
 ### Key Middleware Components
 
-- **Authentication Middleware**: Validates JWT tokens to ensure users are authenticated before accessing protected routes. This middleware extracts user information from tokens and makes it available to route handlers.
-  ```javascript
-  const authenticate = async (req, res, next) => {
-    try {
-      // Extract token from request header
-      const token = req.header('Authorization')?.replace('Bearer ', '');
-      
-      if (!token) {
-        return res.status(401).json({ error: { message: 'Authentication required', code: 'AUTH_REQUIRED' } });
-      }
-      
-      // Verify token and extract user data
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
-      // Look up user in database to confirm they exist
-      const user = await User.findById(decoded.id);
-      if (!user) {
-        return res.status(401).json({ error: { message: 'User not found', code: 'USER_NOT_FOUND' } });
-      }
-      
-      // Make user data available for route handlers
-      req.user = user;
-      next();
-    } catch (error) {
-      logger.error(`Authentication error: ${error.message}`);
-      res.status(401).json({ error: { message: 'Invalid authentication token', code: 'INVALID_TOKEN' } });
-    }
-  };
-  ```
-
-- **Error Handling Middleware**: Provides centralized error processing, ensuring consistent error responses across the API and proper logging of errors for troubleshooting.
-  ```javascript
-  const errorHandler = (err, req, res, next) => {
-    // Log the error
-    logger.error(`${err.name}: ${err.message}`, { stack: err.stack });
+#### Authentication Middleware (auth.js)
+Validates JWT tokens and provides user identification:
+```javascript
+// auth.js
+const authenticate = async (req, res, next) => {
+  try {
+    // Get token from header
+    const authHeader = req.headers.authorization;
     
-    // Set default status code and message
-    let statusCode = err.statusCode || 500;
-    let errorMessage = err.message || 'Internal Server Error';
-    let errorCode = err.code || 'SERVER_ERROR';
-    
-    // Handle specific error types
-    if (err.name === 'ValidationError') {
-      statusCode = 400;
-      errorMessage = err.message;
-      errorCode = 'VALIDATION_ERROR';
-    } else if (err.name === 'JsonWebTokenError') {
-      statusCode = 401;
-      errorMessage = 'Invalid token';
-      errorCode = 'INVALID_TOKEN';
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Authentication required' });
     }
     
-    // Send error response
-    res.status(statusCode).json({
-      error: {
-        message: errorMessage,
-        code: errorCode,
-        status: statusCode
-      }
-    });
-  };
-  ```
-
-- **Request Validation Middleware**: Validates incoming request data against defined schemas to ensure data integrity before it reaches the database or business logic.
-  ```javascript
-  const validateRequest = (schema) => {
-    return (req, res, next) => {
-      const { error } = schema.validate(req.body);
-      
-      if (error) {
-        return res.status(400).json({
-          error: {
-            message: error.details.map(detail => detail.message).join(', '),
-            code: 'VALIDATION_ERROR',
-            status: 400
-          }
-        });
-      }
-      
-      next();
-    };
-  };
-  ```
-
-- **Logging Middleware**: Records API requests and responses for monitoring, debugging, and audit purposes using Winston logger.
-  ```javascript
-  const requestLogger = (req, res, next) => {
-    const start = Date.now();
+    // Extract and verify token
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
     
-    // Log request details
-    logger.info(`${req.method} ${req.originalUrl}`, {
-      method: req.method,
-      url: req.originalUrl,
-      ip: req.ip,
-      userId: req.user ? req.user._id : 'unauthenticated'
-    });
+    // Find user by id from token
+    const user = await User.findById(decoded.id);
     
-    // Capture response
-    const originalSend = res.send;
-    res.send = function(body) {
-      const duration = Date.now() - start;
+    if (!user) {
+      return res.status(401).json({ message: 'User not found or token invalid' });
+    }
+    
+    // Add user to request object
+    req.user = { id: user._id, email: user.email, role: user.role };
+    
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: 'Authentication failed' });
+  }
+};
+```
+
+#### Cache Middleware (cache.js)
+Improves performance by caching API responses:
+```javascript
+// cache.js
+const cacheMiddleware = (ttl = 300) => {
+  return (req, res, next) => {
+    // Skip caching for non-GET requests
+    if (req.method !== 'GET') {
+      return next();
+    }
+    
+    // Generate cache key and check for cached response
+    const cacheKey = `${req.originalUrl || req.url}`;
+    const cachedResponse = cache.get(cacheKey);
+    
+    if (cachedResponse) {
+      return res.json(cachedResponse);
+    }
+    
+    // Override res.json to cache successful responses
+    const originalJson = res.json;
+    res.json = function(body) {
+      res.json = originalJson;
       
-      // Log response details
-      logger.info(`${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`, {
-        method: req.method,
-        url: req.originalUrl,
-        status: res.statusCode,
-        duration: duration,
-        userId: req.user ? req.user._id : 'unauthenticated'
-      });
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        cache.set(cacheKey, body, ttl);
+      }
       
-      return originalSend.call(this, body);
+      return res.json(body);
     };
     
     next();
   };
-  ```
+};
+```
 
-- **CORS Middleware**: Manages Cross-Origin Resource Sharing to control which domains can interact with the API, enhancing security.
-  ```javascript
-  const corsOptions = {
-    origin: process.env.ALLOWED_ORIGINS.split(','),
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-    maxAge: 86400 // 24 hours
-  };
-  
-  app.use(cors(corsOptions));
-  ```
+#### Rate Limiting (rateLimiter.js & app.js)
+Prevents API abuse by limiting request frequency:
+```javascript
+// rateLimiter.js
+const rateLimiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+  standardHeaders: true,
+  handler: (req, res) => {
+    logger.warn(`Rate limit exceeded for IP: ${req.ip}`);
+    res.status(429).json({
+      success: false,
+      message: 'Too many requests, please try again later.',
+    });
+  },
+});
+```
 
-- **Rate Limiting Middleware**: Prevents abuse of the API by limiting the number of requests from a single client within a specified time window.
-  ```javascript
-  const rateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-    message: {
-      error: {
-        message: 'Too many requests, please try again later.',
-        code: 'RATE_LIMIT_EXCEEDED',
-        status: 429
-      }
-    }
-  });
-  
-  // Apply rate limiting to all routes
-  app.use('/api/', rateLimiter);
-  ```
-
-### Middleware Pipeline
-
-The middleware components are arranged in a pipeline where each request passes through a series of processing steps:
-
-1. **Request Logging**: Log incoming request details
-2. **CORS Handling**: Process cross-origin requests
-3. **Body Parsing**: Parse JSON and URL-encoded bodies
-4. **Rate Limiting**: Apply request rate limits
-5. **Authentication**: Validate user tokens (for protected routes)
-6. **Request Validation**: Validate request data
-7. **Route Handler**: Process the request in the appropriate controller
-8. **Error Handling**: Catch and process any errors
-9. **Response**: Send the response back to the client
-
-This structured approach ensures that each request is properly processed, validated, and secured before reaching the business logic.
+#### Error Handling (app.js)
+Centralized error handling to provide consistent responses:
+```javascript
+// app.js
+app.use((err, req, res, next) => {
+  logger.error(`Error: ${err.message}`);
+  res.status(500).json({ message: 'Server error' });
+});
+```
 
 ### Middleware Registration
 
-Middleware is registered in the Express application in a specific order to create the processing pipeline:
+Middleware is registered in the Express application in a specific order:
 
 ```javascript
 // app.js
-const express = require('express');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-const { requestLogger, errorHandler } = require('./middleware');
-const routes = require('./routes');
+// Security middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:3000'
+}));
 
-const app = express();
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100
+});
+app.use(limiter);
 
-// Global middleware (applied to all routes)
-app.use(requestLogger);
-app.use(cors(corsOptions));
+// Body parsing middleware
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use('/api', rateLimiter);
+app.use(express.urlencoded({ extended: false }));
 
-// API routes with their specific middleware
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/market', require('./routes/market'));
-app.use('/api/portfolio', authenticate, require('./routes/portfolio'));
-
-// Error handling middleware (must be registered last)
-app.use(errorHandler);
+// Compression
+app.use(compression());
 ```
 
-Protected routes use the authentication middleware at the router level:
+For routes that require authentication, the middleware is applied at the router level:
 
 ```javascript
 // routes/portfolio.js
-const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middleware/auth');
-const { validateRequest } = require('../middleware/validation');
-const portfolioController = require('../controllers/portfolioController');
-const { portfolioSchema } = require('../utils/validators');
 
-// All routes in this router require authentication
+// Apply authentication middleware to all portfolio routes
 router.use(authenticate);
 
-router.get('/', portfolioController.getPortfolio);
-router.post('/holdings', validateRequest(portfolioSchema), portfolioController.addHolding);
-// ... other routes
-
-module.exports = router;
+// Route handlers follow...
 ```
 
-This organization allows for:
-- Global middleware that applies to all requests
-- Route-specific middleware for protecting certain endpoints
-- Specific validation for each endpoint type
-- Centralized error handling
+This organization ensures that:
+1. Security measures are applied first
+2. Body parsing happens before route processing
+3. Authentication is applied only to routes that need it
+4. Error handling catches any issues in the pipeline
 
 ## Installation & Usage Instructions
 
