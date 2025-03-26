@@ -1,6 +1,6 @@
 const jsonwebtoken = require('jsonwebtoken');
-const { authenticate, generateToken } = require('../../src/middleware/auth');
-const User = require('../../src/models/User');
+const { authenticate, generateToken } = require('../../src/middleware/security/auth');
+const User = require('../../src/core/models/User');
 
 // Mock logger
 jest.mock('../../src/utils/logger', () => ({
@@ -18,7 +18,7 @@ jest.mock('../../src/utils/logger', () => ({
 
 // Mock dependencies
 jest.mock('jsonwebtoken');
-jest.mock('../../src/models/User');
+jest.mock('../../src/core/models/User');
 
 // Setup test data
 const mockUserId = '123456789';

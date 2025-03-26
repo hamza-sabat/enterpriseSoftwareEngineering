@@ -1,9 +1,9 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-const User = require('../../src/models/User');
+const User = require('../../src/core/models/User');
 const jwt = require('jsonwebtoken');
-const { authenticate } = require('../../src/middleware/auth');
+const { authenticate } = require('../../src/middleware/security/auth');
 
 // Mock the logger
 jest.mock('../../src/utils/logger', () => ({
@@ -22,7 +22,7 @@ jest.mock('../../src/utils/logger', () => ({
 // Create Express app for testing
 const express = require('express');
 const cors = require('cors');
-const authRoutes = require('../../src/routes/auth');
+const authRoutes = require('../../src/core/routes/auth');
 
 // Setup environment variables for testing
 process.env.JWT_SECRET = 'test_jwt_secret';
