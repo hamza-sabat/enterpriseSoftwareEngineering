@@ -139,6 +139,14 @@ This clear separation ensures maintainability, testability, and scalability.
 - CORS protection
 - Rate limiting for API endpoints
 - Environment variable management for secrets
+- **Environment Variable Security**:
+  - No hardcoded secrets in the codebase
+  - Different environment variable configurations for development, testing, and production
+  - Sensitive variables stored securely in Render's protected environment
+  - Environment sample files with placeholders for documentation
+  - Database credentials and API keys securely managed and never committed to version control
+
+  ![Secure Environment Variables in Render](images/secure-environment-variables.png)
 
 ### Deployment
 - Primary deployment platform: Render (web services for backend, static sites for frontend)
@@ -148,6 +156,55 @@ This clear separation ensures maintainability, testability, and scalability.
 - Detailed logging and monitoring with Winston and Morgan
 - MongoDB Atlas for cloud database hosting
 - AWS and Heroku as alternative deployment options
+- **Secure Environment Variables**: All sensitive information (API keys, database credentials, JWT secrets) is stored as protected environment variables in Render's secure environment, not in the codebase
+
+The application is already deployed and accessible at:
+- Frontend: [https://crypto-portfolio-frontend-rxrt.onrender.com](https://crypto-portfolio-frontend-rxrt.onrender.com)
+- Backend API: [https://crypto-portfolio-backend-0dv2.onrender.com/api](https://crypto-portfolio-backend-0dv2.onrender.com/api)
+- Demo Credentials:
+  - Email: demo@example.com
+  - Password: Demo123!
+
+The deployment is connected to the GitHub repository's main branch with Continuous Deployment enabled. Any changes pushed to the main branch trigger automatic builds and deployments on Render, ensuring the live application always reflects the latest updates.
+
+![Deployment on Render](images/deployment-render-screenshot.png)
+![Frontend Deployment](images/frontend-deployment.png)
+![Backend Deployment](images/backend-deployment.png)
+
+#### Deploying Your Own Instance
+
+If you want to deploy your own instance, the application is configured for easy deployment to Render:
+
+1. **Backend Deployment**:
+   - Create a new Web Service on Render
+   - Connect your GitHub repository
+   - Use the following settings:
+     - Runtime: Node
+     - Build Command: `cd backend && npm install`
+     - Start Command: `cd backend && npm start`
+   - Add environment variables from your backend `.env` file
+     - Add all required variables securely in Render's environment variables section:
+       - `JWT_SECRET` - A secure random string for JWT signing
+       - `MONGODB_URI` - Your MongoDB connection string
+       - `CRYPTO_API_KEY` - Your cryptocurrency API key
+       - `NODE_ENV` - Set to 'production'
+       - `ALLOWED_ORIGINS` - Your frontend URL for CORS
+     - Render securely stores these variables and makes them available to your application without exposing them in the code or build logs
+   - For MongoDB, use MongoDB Atlas or Render's managed PostgreSQL with an adapter
+
+2. **Frontend Deployment**:
+   - Create a new Static Site on Render
+   - Connect your GitHub repository
+   - Use the following settings:
+     - Build Command: `cd frontend && npm install && npm run build`
+     - Publish Directory: `frontend/build`
+   - Add an environment variable: `REACT_APP_API_URL=https://your-backend-service-url.onrender.com/api`
+
+3. **Connect Frontend to Backend**:
+   - After deploying both services, update the frontend's REACT_APP_API_URL to point to your backend service URL
+   - If needed, update the CORS settings in your backend to allow your frontend's domain
+
+The Render deployment will automatically handle building and deploying your application whenever you push changes to your GitHub repository.
 
 ## Architecture
 
@@ -653,34 +710,6 @@ To run this application, you'll need the following technologies installed on you
    # or with yarn
    # yarn start
    ```
-
-### Deploying to Render
-
-The application is configured for easy deployment to Render:
-
-1. **Backend Deployment**:
-   - Create a new Web Service on Render
-   - Connect your GitHub repository
-   - Use the following settings:
-     - Runtime: Node
-     - Build Command: `cd backend && npm install`
-     - Start Command: `cd backend && npm start`
-   - Add environment variables from your backend `.env` file
-   - For MongoDB, use MongoDB Atlas or Render's managed PostgreSQL with an adapter
-
-2. **Frontend Deployment**:
-   - Create a new Static Site on Render
-   - Connect your GitHub repository
-   - Use the following settings:
-     - Build Command: `cd frontend && npm install && npm run build`
-     - Publish Directory: `frontend/build`
-   - Add an environment variable: `REACT_APP_API_URL=https://your-backend-service-url.onrender.com/api`
-
-3. **Connect Frontend to Backend**:
-   - After deploying both services, update the frontend's REACT_APP_API_URL to point to your backend service URL
-   - If needed, update the CORS settings in your backend to allow your frontend's domain
-
-The Render deployment will automatically handle building and deploying your application whenever you push changes to your GitHub repository.
 
 ### Troubleshooting
 
