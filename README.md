@@ -60,6 +60,7 @@ The application follows a **distinct three-layer architecture** that ensures sep
   - Pages (`/frontend/src/pages`)
   - Context providers (`/frontend/src/context`)
   - API service clients (`/frontend/src/services`)
+  - **App.js**: Central routing configuration that defines the application's navigation flow using React Router with protected routes and context providers
 
 #### Middleware Layer (Express.js)
 - **Technology**: Express.js middleware functions
