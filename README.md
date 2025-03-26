@@ -616,14 +616,6 @@ To run this application, you'll need the following technologies installed on you
    # yarn test
    ```
 
-2. **Run frontend tests**:
-   ```bash
-   cd frontend
-   npm test
-   # or with yarn
-   # yarn test
-   ```
-
 ### Building for Production
 
 1. **Build the frontend**:
