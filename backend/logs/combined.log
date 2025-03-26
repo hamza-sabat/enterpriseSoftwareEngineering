@@ -46,3 +46,5 @@
 2025-03-25 18:53:08:538 [33mwarn[39m: [33mPort 3001 is already in use, trying port 30011[39m
 2025-03-25 18:53:08:538 [32minfo[39m: [32mServer running on port 30011[39m
 2025-03-25 18:53:08:538 [32minfo[39m: [32mConnected to MongoDB Atlas successfully[39m
+2025-03-26 01:30:39:3039 [32minfo[39m: [32mServer running on port 3001[39m
+2025-03-26 01:30:39:3039 [32minfo[39m: [32mConnected to MongoDB Atlas successfully[39m

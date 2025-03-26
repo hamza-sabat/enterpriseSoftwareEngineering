@@ -1,5 +1,5 @@
 const NodeCache = require('node-cache');
-const { logger } = require('../utils/logger');
+const { logger } = require('../../utils/logger');
 
 // Create a new cache instance with standard TTL of 5 minutes and check period of 10 minutes
 const cache = new NodeCache({

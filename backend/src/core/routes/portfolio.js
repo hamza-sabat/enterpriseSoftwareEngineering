@@ -1,6 +1,6 @@
 const express = require('express');
-const { logger } = require('../utils/logger');
-const { authenticate } = require('../middleware/auth');
+const { logger } = require('../../middleware/logging/logger');
+const { authenticate } = require('../../middleware/security/auth');
 const Portfolio = require('../models/Portfolio');
 const { createDocument } = require('../utils/database');
 

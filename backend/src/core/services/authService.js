@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const { generateToken } = require('../middleware/auth');
-const { logger } = require('../utils/logger');
+const { logger } = require('../../utils/logger');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 class AuthService {
     async registerUser(userData) {

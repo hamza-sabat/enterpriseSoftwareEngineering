@@ -1,8 +1,8 @@
 const express = require('express');
 const marketController = require('../controllers/marketController');
-const { authenticate } = require('../middleware/auth');
-const { rateLimiter } = require('../middleware/rateLimiter');
-const { cacheMiddleware, flushCache, getCacheStats } = require('../middleware/cache');
+const { authenticate } = require('../../middleware/security/auth');
+const { rateLimiter } = require('../../middleware/security/rateLimiter');
+const { cacheMiddleware, flushCache, getCacheStats } = require('../../middleware/performance/cache');
 
 const router = express.Router();
 

@@ -69,7 +69,68 @@ const stream = {
   write: (message) => logger.http(message.trim()),
 };
 
+/**
+ * Middleware to log incoming requests and their responses
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next function
+ */
+const requestLogger = (req, res, next) => {
+  const start = Date.now();
+  const { method, originalUrl, ip } = req;
+  
+  // Log request details
+  logger.info(`${method} ${originalUrl} - Request received`, {
+    method,
+    url: originalUrl,
+    ip,
+    userAgent: req.headers['user-agent'],
+    userId: req.user ? req.user.id : 'unauthenticated'
+  });
+  
+  // Capture original response methods
+  const originalSend = res.send;
+  const originalJson = res.json;
+  
+  // Override res.send
+  res.send = function(body) {
+    const duration = Date.now() - start;
+    const size = body ? Buffer.byteLength(body instanceof Buffer ? body : String(body)) : 0;
+    
+    logger.info(`${method} ${originalUrl} ${res.statusCode} - ${duration}ms - ${size} bytes`, {
+      method,
+      url: originalUrl,
+      status: res.statusCode,
+      duration,
+      responseSize: size,
+      userId: req.user ? req.user.id : 'unauthenticated'
+    });
+    
+    return originalSend.call(this, body);
+  };
+  
+  // Override res.json
+  res.json = function(body) {
+    const duration = Date.now() - start;
+    const size = body ? Buffer.byteLength(JSON.stringify(body)) : 0;
+    
+    logger.info(`${method} ${originalUrl} ${res.statusCode} - ${duration}ms - ${size} bytes`, {
+      method,
+      url: originalUrl,
+      status: res.statusCode,
+      duration,
+      responseSize: size,
+      userId: req.user ? req.user.id : 'unauthenticated'
+    });
+    
+    return originalJson.call(this, body);
+  };
+  
+  next();
+};
+
 module.exports = {
   logger,
   stream,
+  requestLogger
 }; 

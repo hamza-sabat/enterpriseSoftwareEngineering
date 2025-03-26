@@ -1,4 +1,4 @@
-const { logger } = require('./logger');
+const { logger } = require('../../utils/logger');
 
 /**
  * Create a new document

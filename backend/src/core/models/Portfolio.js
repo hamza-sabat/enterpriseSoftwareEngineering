@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { logger } = require('../utils/logger');
+const { logger } = require('../../middleware/logging/logger');
 
 const holdingSchema = new mongoose.Schema({
   cryptoId: {

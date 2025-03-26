@@ -1,5 +1,5 @@
 const portfolioService = require('../services/portfolioService');
-const logger = require('../utils/logger');
+const logger = require('../../utils/logger').logger;
 
 class PortfolioController {
     async getPortfolio(req, res) {

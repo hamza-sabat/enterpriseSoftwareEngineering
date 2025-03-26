@@ -65,13 +65,23 @@ The application follows a **distinct three-layer architecture** that ensures sep
 #### Middleware Layer (Express.js)
 - **Technology**: Express.js middleware functions
 - **Location**: `/backend/src/middleware` directory
-- **Responsibility**: Request processing, authentication, validation, error handling
+- **Responsibility**: Request processing, authentication, validation, error handling, logging, caching
 - **Key Components**:
-  - Authentication middleware (`/backend/src/middleware/auth.js`) - JWT token validation
-  - Cache middleware (`/backend/src/middleware/cache.js`) - Response caching for performance
-  - Rate limiting middleware (`/backend/src/middleware/rateLimiter.js`) - Request frequency control
-  - Error handling (implemented directly in `app.js`) - Centralized error processing
-  - Security and CORS middleware (implemented in `app.js`) - Using Helmet and CORS packages
+  - **Security** (`middleware/security/`): 
+    - Authentication middleware with JWT (`auth.js`)
+    - Rate limiting to prevent abuse (`rateLimiter.js`)
+    - CORS configuration for cross-origin requests (`cors.js`)
+  - **Performance** (`middleware/performance/`): 
+    - Response caching for improved performance (`cache.js`)
+  - **Logging** (`middleware/logging/`): 
+    - Winston logger configuration (`logger.js`)
+    - Request/response logging functionality
+  - **Error Handling** (`middleware/error/`): 
+    - Centralized error processing (`errorHandler.js`)
+  - **Database** (`middleware/database/`): 
+    - MongoDB connection management (`config.js`)
+  - **Request Processing** (`middleware/request/`): 
+    - Input validation middleware (`validation.js`)
 
 #### Services Layer
 - **Technology**: Node.js service modules
@@ -82,14 +92,21 @@ The application follows a **distinct three-layer architecture** that ensures sep
   - Market data services (`/backend/src/services/market.js`) 
   - Portfolio calculation services (`/backend/src/services/portfolio.js`)
 
-#### Backend Layer (Data & API)
-- **Technology**: Express.js, Mongoose ODM, MongoDB
-- **Location**: `/backend/src/models`, `/backend/src/controllers`, `/backend/src/routes`
-- **Responsibility**: Data persistence, API endpoints, database operations
+#### Backend Core (Business Logic)
+- **Technology**: Node.js, Express.js, Mongoose
+- **Location**: `/backend/src/core` directory
+- **Responsibility**: Business logic, data manipulation, API endpoints
 - **Key Components**:
-  - MongoDB models (`/backend/src/models`)
-  - API controllers (`/backend/src/controllers`)
-  - Route definitions (`/backend/src/routes`)
+  - **Models** (`core/models/`): 
+    - MongoDB schemas and models (`User.js`, `Portfolio.js`)
+  - **Controllers** (`core/controllers/`): 
+    - Route handler logic (`authController.js`, `portfolioController.js`)
+  - **Services** (`core/services/`): 
+    - Business logic implementation (`authService.js`, `marketService.js`)
+  - **Routes** (`core/routes/`): 
+    - API endpoint definitions (`auth.js`, `portfolio.js`)
+  - **Utilities** (`core/utils/`): 
+    - Business logic utilities and helpers (`database.js`, `dbUtils.js`)
 
 This clear separation ensures maintainability, testability, and scalability.
 
@@ -173,33 +190,21 @@ The backend is built with Node.js and Express, following a modular architecture 
 ```
 backend/src/
 ├── middleware/     # API middleware components
-│   ├── auth.js     # Authentication middleware
-│   ├── error.js    # Error handling middleware
-│   ├── validation.js # Request validation
-│   └── logger.js   # Request logging middleware
-├── routes/         # API endpoint definitions
-│   ├── auth.js     # Authentication routes
-│   ├── market.js   # Market data routes
-│   └── portfolio.js # Portfolio management routes
-├── models/         # Database models and schemas
-│   ├── User.js     # User schema with authentication
-│   └── Portfolio.js # Portfolio schema with holdings
-├── controllers/    # Route handler controllers
-│   ├── authController.js # Authentication logic
-│   ├── marketController.js # Market data logic
-│   └── portfolioController.js # Portfolio management logic
-├── services/       # Business logic services
-│   ├── authService.js # Authentication operations
-│   ├── marketService.js # Market data operations
-│   └── portfolioService.js # Portfolio calculations
-├── utils/          # Shared utilities
-│   ├── logger.js   # Logging service
-│   ├── apiError.js # Custom error classes
-│   └── validators.js # Input validation utilities
-├── config/         # Configuration management
-│   └── database.js # Database connection setup
-├── app.js          # Express application setup
-└── index.js        # Server initialization
+│   ├── security/   # Authentication, rate limiting, CORS
+│   ├── performance/ # Caching, compression
+│   ├── logging/    # Logger configuration and request logging
+│   ├── error/      # Error handling middleware
+│   ├── database/   # Database connection management
+│   ├── request/    # Request validation and processing
+│   └── index.js    # Middleware exports and configuration
+├── core/             # Core backend business logic
+│   ├── controllers/  # Route handler controllers
+│   ├── models/       # Database models and schemas
+│   ├── routes/       # API endpoint definitions
+│   ├── services/     # Business logic services
+│   └── utils/        # Backend utility functions
+├── app.js            # Express application setup
+└── index.js          # Server initialization
 ```
 
 The backend implements a layered architecture:
@@ -360,9 +365,13 @@ The application implements middleware at different levels:
    - Authentication middleware for protected routes
    
 3. **Custom Middleware Files**:
-   - Authentication (`backend/src/middleware/auth.js`)
-   - Cache management (`backend/src/middleware/cache.js`)
-   - Rate limiting (`backend/src/middleware/rateLimiter.js`)
+   - Authentication (`backend/src/middleware/security/auth.js`)
+   - Cache management (`backend/src/middleware/performance/cache.js`)
+   - Rate limiting (`backend/src/middleware/security/rateLimiter.js`)
+   - CORS configuration (`backend/src/middleware/security/cors.js`)
+   - Request logging (`backend/src/middleware/logging/logger.js`)
+   - Error handling (`backend/src/middleware/error/errorHandler.js`)
+   - Request validation (`backend/src/middleware/request/validation.js`)
 
 ### Key Middleware Components
 
@@ -678,45 +687,777 @@ The API is available at `http://localhost:3001/api` with the following main endp
 ## Feature Overview
 
 ### Authentication System
-- **Purpose**: Secure user authentication with JWT tokens and password hashing
-- **Location**: `frontend/src/pages/Login.js` & `backend/src/routes/auth.js`
+- **Purpose**: Secure user authentication with JWT tokens and password hashing, providing seamless login/signup experience and protected routes throughout the application
+- **Location**: 
+  - Frontend: `frontend/src/pages/Login.js`, `frontend/src/context/AuthContext.js`
+  - Backend: `backend/src/core/routes/auth.js`, `backend/src/middleware/security/auth.js`
 - **Key Components**:
-  - JWT token-based authentication
-  - Password hashing with bcrypt
-  - Login and registration forms with validation
-  - Endpoints: `/api/auth/login`, `/api/auth/register`, `/api/auth/me`
+  - JWT token-based authentication with secure storage in localStorage
+  - Password hashing with bcrypt for secure storage
+  - Login and registration forms with comprehensive validation
+  - Protected route wrapper for authenticated access control
+  - Persistent auth state with React Context API
+- **Code Snippets**:
+  ```jsx
+  // frontend/src/context/AuthContext.js
+  const AuthProvider = ({ children }) => {
+    const [user, setUser] = useState(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    
+    // Load user from token on initial mount
+    useEffect(() => {
+      const loadUser = async () => {
+        const token = localStorage.getItem('token');
+        
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
+        
+        try {
+          const response = await authService.getCurrentUser();
+          setUser(response.data);
+          setIsAuthenticated(true);
+        } catch (error) {
+          localStorage.removeItem('token');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      loadUser();
+    }, []);
+    
+    // Login function used by Login component
+    const login = async (credentials) => {
+      const response = await authService.login(credentials);
+      const { token, user } = response.data;
+      
+      localStorage.setItem('token', token);
+      setUser(user);
+      setIsAuthenticated(true);
+      
+      return user;
+    };
+    
+    // Logout function
+    const logout = () => {
+      localStorage.removeItem('token');
+      setUser(null);
+      setIsAuthenticated(false);
+    };
+    
+    return (
+      <AuthContext.Provider value={{
+        user,
+        isAuthenticated,
+        isLoading,
+        login,
+        logout,
+        updateUser: (userData) => setUser(userData)
+      }}>
+        {children}
+      </AuthContext.Provider>
+    );
+  };
+  
+  // Protected Route implementation
+  const ProtectedRoute = ({ children }) => {
+    const { isAuthenticated, isLoading } = useAuth();
+    
+    if (isLoading) {
+      return <CircularProgress />;
+    }
+    
+    return isAuthenticated ? children : <Navigate to="/login" />;
+  };
+  ```
+- **Endpoints**: 
+  - `POST /api/auth/login` - Authenticate user and return JWT token
+  - `POST /api/auth/register` - Register new user account
+  - `GET /api/auth/me` - Get current authenticated user details
+  - `PUT /api/auth/profile` - Update user profile information
 
 ### Market Overview
-- **Purpose**: Display real-time cryptocurrency market data with search and filtering capabilities
-- **Location**: `frontend/src/pages/Market.js` & `backend/src/routes/market.js`
+- **Purpose**: Display real-time cryptocurrency market data with comprehensive search, filtering, and sorting capabilities, providing users with up-to-date market intelligence
+- **Location**: 
+  - Frontend: `frontend/src/pages/Market.js`, `frontend/src/components/MarketTable.js`
+  - Backend: `backend/src/core/routes/market.js`, `backend/src/core/services/marketService.js`
 - **Key Components**:
-  - Real-time cryptocurrency prices and market trends
-  - Search and filtering functionality
-  - Sorting options by various metrics
-  - 24h change indicators with visual cues
-  - Currency formatting based on user preferences
-  - Endpoints: `/api/market/listings`, `/api/market/global`, `/api/market/search`
+  - Real-time cryptocurrency prices and market trends with auto-refresh
+  - Advanced search with typeahead functionality to find specific coins
+  - Multi-criteria filtering (market cap, price range, volume, etc.)
+  - Customizable sorting by various metrics with visual indicators
+  - 24h change indicators with color-coded visual cues
+  - Dynamic currency formatting based on user preferences via Context API
+  - Performance optimized data grid with virtual scrolling for large datasets
+- **Code Snippets**:
+  ```jsx
+  // frontend/src/pages/Market.js
+  const Market = () => {
+    const { currency } = useCurrency();
+    const [cryptocurrencies, setCryptocurrencies] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sortConfig, setSortConfig] = useState({ key: 'market_cap', direction: 'desc' });
+    const [filters, setFilters] = useState({
+      priceMin: '',
+      priceMax: '',
+      marketCapMin: '',
+      marketCapMax: '',
+      changeFilter: 'all' // 'positive', 'negative', 'all'
+    });
+    
+    // Fetch cryptocurrency listings from API
+    useEffect(() => {
+      const fetchData = async () => {
+        try {
+          setLoading(true);
+          const response = await marketService.getListings({ currency });
+          setCryptocurrencies(response.data);
+        } catch (error) {
+          console.error('Failed to fetch market data:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      fetchData();
+      
+      // Auto-refresh market data every 60 seconds
+      const interval = setInterval(fetchData, 60000);
+      return () => clearInterval(interval);
+    }, [currency]);
+    
+    // Apply search, filters, and sorting
+    const filteredCryptos = useMemo(() => {
+      return cryptocurrencies
+        .filter(crypto => {
+          // Search filter
+          if (searchTerm && !crypto.name.toLowerCase().includes(searchTerm.toLowerCase()) && 
+              !crypto.symbol.toLowerCase().includes(searchTerm.toLowerCase())) {
+            return false;
+          }
+          
+          // Price filter
+          if (filters.priceMin && crypto.price < parseFloat(filters.priceMin)) return false;
+          if (filters.priceMax && crypto.price > parseFloat(filters.priceMax)) return false;
+          
+          // Market cap filter
+          if (filters.marketCapMin && crypto.market_cap < parseFloat(filters.marketCapMin)) return false;
+          if (filters.marketCapMax && crypto.market_cap > parseFloat(filters.marketCapMax)) return false;
+          
+          // Change filter
+          if (filters.changeFilter === 'positive' && crypto.percent_change_24h <= 0) return false;
+          if (filters.changeFilter === 'negative' && crypto.percent_change_24h >= 0) return false;
+          
+          return true;
+        })
+        .sort((a, b) => {
+          // Handle sorting
+          if (a[sortConfig.key] < b[sortConfig.key]) {
+            return sortConfig.direction === 'asc' ? -1 : 1;
+          }
+          if (a[sortConfig.key] > b[sortConfig.key]) {
+            return sortConfig.direction === 'asc' ? 1 : -1;
+          }
+          return 0;
+        });
+    }, [cryptocurrencies, searchTerm, filters, sortConfig]);
+    
+    return (
+      <Container maxWidth="xl">
+        <Typography variant="h4" component="h1" gutterBottom>
+          Cryptocurrency Market
+        </Typography>
+        
+        {/* Search and filter controls */}
+        <Paper sx={{ p: 2, mb: 3 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Search by name or symbol"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </Grid>
+            
+            {/* Additional filter controls omitted for brevity */}
+          </Grid>
+        </Paper>
+        
+        {/* Market data table */}
+        <MarketTable 
+          data={filteredCryptos} 
+          loading={loading} 
+          sortConfig={sortConfig} 
+          onSort={setSortConfig} 
+        />
+      </Container>
+    );
+  };
+  ```
+- **Endpoints**: 
+  - `GET /api/market/listings` - Get cryptocurrency listings with optional query parameters for pagination and filtering
+  - `GET /api/market/global` - Get global market metrics (total market cap, volume, etc.)
+  - `GET /api/market/search?query=bitcoin` - Search cryptocurrencies by name or symbol
+  - `GET /api/market/crypto/:symbol` - Get detailed information for a specific cryptocurrency
 
 ### Portfolio Management
-- **Purpose**: Track cryptocurrency holdings with real-time valuations and performance metrics
-- **Location**: `frontend/src/pages/Portfolio.js` & `backend/src/routes/portfolio.js`
+- **Purpose**: Comprehensive crypto portfolio tracking system with real-time valuation, performance analytics, and visualization tools
+- **Location**: 
+  - Frontend: `frontend/src/pages/Portfolio.js`, `frontend/src/components/AddHoldingModal.js`
+  - Backend: `backend/src/core/routes/portfolio.js`, `backend/src/core/services/portfolioService.js`
 - **Key Components**:
-  - Add, edit, and remove cryptocurrency holdings
-  - Automatic calculation of current values and profit/loss
-  - Performance metrics including total portfolio value
-  - Visual charts for portfolio composition
-  - Search and sort functionality for holdings
-  - Best and worst performers identification
-  - Endpoints: `/api/portfolio`, `/api/portfolio/holdings/:id`
+  - CRUD operations for cryptocurrency holdings with user-friendly forms
+  - Automatic calculation of current values and profit/loss metrics in real-time
+  - Performance analytics including ROI, total value, and cost basis
+  - Interactive data visualization with customizable charts (pie, line, bar)
+  - Powerful search, filter, and sort capabilities for holdings management
+  - Best and worst performers identification with intelligent ranking
+  - Responsive design for both desktop and mobile viewing
+- **Code Snippets**:
+  ```jsx
+  // frontend/src/pages/Portfolio.js
+  const Portfolio = () => {
+    const { currency, formatCurrency } = useCurrency();
+    const [portfolio, setPortfolio] = useState(null);
+    const [marketData, setMarketData] = useState({});
+    const [loading, setLoading] = useState(true);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sortBy, setSortBy] = useState('value');
+    const [sortDirection, setSortDirection] = useState('desc');
+    
+    // Fetch portfolio data
+    const fetchPortfolio = useCallback(async () => {
+      try {
+        setLoading(true);
+        const response = await portfolioService.getPortfolio();
+        setPortfolio(response.data);
+        
+        // Fetch current market prices for all holdings
+        if (response.data?.holdings?.length) {
+          const symbols = response.data.holdings.map(h => h.symbol).join(',');
+          const marketResponse = await marketService.getMarketDataBySymbols(symbols, currency);
+          
+          // Create a map of symbol -> market data for easy lookup
+          const marketDataMap = {};
+          marketResponse.data.forEach(crypto => {
+            marketDataMap[crypto.symbol] = crypto;
+          });
+          
+          setMarketData(marketDataMap);
+        }
+      } catch (error) {
+        console.error('Failed to fetch portfolio:', error);
+      } finally {
+        setLoading(false);
+      }
+    }, [currency]);
+    
+    useEffect(() => {
+      fetchPortfolio();
+    }, [fetchPortfolio]);
+    
+    // Calculate portfolio metrics with current market prices
+    const portfolioMetrics = useMemo(() => {
+      if (!portfolio?.holdings?.length || Object.keys(marketData).length === 0) {
+        return {
+          totalValue: 0,
+          totalCost: 0,
+          totalProfit: 0,
+          totalProfitPercentage: 0
+        };
+      }
+      
+      // Calculate totals
+      const metrics = portfolio.holdings.reduce((acc, holding) => {
+        const currentPrice = marketData[holding.symbol]?.price || 0;
+        const currentValue = holding.amount * currentPrice;
+        const cost = holding.amount * holding.purchasePrice;
+        const profit = currentValue - cost;
+        const profitPercentage = cost > 0 ? (profit / cost) * 100 : 0;
+        
+        return {
+          totalValue: acc.totalValue + currentValue,
+          totalCost: acc.totalCost + cost,
+          totalProfit: acc.totalProfit + profit,
+          holdings: [
+            ...acc.holdings,
+            {
+              ...holding,
+              currentPrice,
+              currentValue,
+              profit,
+              profitPercentage
+            }
+          ]
+        };
+      }, { totalValue: 0, totalCost: 0, totalProfit: 0, holdings: [] });
+      
+      metrics.totalProfitPercentage = metrics.totalCost > 0 
+        ? (metrics.totalProfit / metrics.totalCost) * 100 
+        : 0;
+        
+      // Sort and filter holdings  
+      let processedHoldings = metrics.holdings;
+      
+      if (searchTerm) {
+        processedHoldings = processedHoldings.filter(
+          h => h.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+               h.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+      
+      processedHoldings.sort((a, b) => {
+        const aValue = a[sortBy];
+        const bValue = b[sortBy];
+        
+        if (typeof aValue === 'string') {
+          return sortDirection === 'asc' 
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+        
+        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      });
+      
+      metrics.holdings = processedHoldings;
+      
+      return metrics;
+    }, [portfolio, marketData, searchTerm, sortBy, sortDirection]);
+    
+    return (
+      <Container maxWidth="xl">
+        <Grid container spacing={3}>
+          {/* Portfolio Summary Cards */}
+          <Grid item xs={12} md={3}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6">Total Value</Typography>
+              <Typography variant="h4">{formatCurrency(portfolioMetrics.totalValue)}</Typography>
+            </Paper>
+          </Grid>
+          
+          <Grid item xs={12} md={3}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6">Total Cost</Typography>
+              <Typography variant="h4">{formatCurrency(portfolioMetrics.totalCost)}</Typography>
+            </Paper>
+          </Grid>
+          
+          <Grid item xs={12} md={3}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6">Total Profit/Loss</Typography>
+              <Typography 
+                variant="h4" 
+                color={portfolioMetrics.totalProfit >= 0 ? 'success.main' : 'error.main'}
+              >
+                {formatCurrency(portfolioMetrics.totalProfit)}
+                {' '}
+                <Typography component="span" color="textSecondary">
+                  ({portfolioMetrics.totalProfitPercentage.toFixed(2)}%)
+                </Typography>
+              </Typography>
+            </Paper>
+          </Grid>
+          
+          <Grid item xs={12} md={3}>
+            <Button 
+              fullWidth 
+              variant="contained" 
+              onClick={() => setModalOpen(true)}
+              sx={{ height: '100%' }}
+            >
+              Add New Holding
+            </Button>
+          </Grid>
+          
+          {/* Portfolio Composition Chart */}
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>Portfolio Composition</Typography>
+              <PortfolioPieChart 
+                holdings={portfolioMetrics.holdings} 
+                currency={currency} 
+              />
+            </Paper>
+          </Grid>
+          
+          {/* Performance Chart */}
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>Performance by Asset</Typography>
+              <PerformanceBarChart 
+                holdings={portfolioMetrics.holdings} 
+                currency={currency} 
+              />
+            </Paper>
+          </Grid>
+          
+          {/* Holdings Table */}
+          <Grid item xs={12}>
+            <Paper>
+              <PortfolioTable 
+                holdings={portfolioMetrics.holdings}
+                loading={loading}
+                onSort={(field) => {
+                  if (sortBy === field) {
+                    setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                  } else {
+                    setSortBy(field);
+                    setSortDirection('desc');
+                  }
+                }}
+                sortBy={sortBy}
+                sortDirection={sortDirection}
+                onDelete={handleDeleteHolding}
+                onEdit={handleEditHolding}
+                currency={currency}
+              />
+            </Paper>
+          </Grid>
+        </Grid>
+        
+        {/* Add/Edit Holding Modal */}
+        <AddHoldingModal 
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSubmit={handleAddHolding}
+          currency={currency}
+        />
+      </Container>
+    );
+  };
+  ```
+- **Endpoints**: 
+  - `GET /api/portfolio` - Get user's portfolio with all holdings
+  - `POST /api/portfolio/holdings` - Add a new cryptocurrency holding
+  - `PUT /api/portfolio/holdings/:id` - Update an existing holding
+  - `DELETE /api/portfolio/holdings/:id` - Remove a holding
+  - `GET /api/portfolio/performance` - Get portfolio performance metrics
 
 ### User Settings
-- **Purpose**: Manage user preferences including appearance and currency display options
-- **Location**: `frontend/src/pages/Settings.js`
+- **Purpose**: Comprehensive preference management allowing users to customize their experience with appearance, currency, and account settings
+- **Location**: 
+  - Frontend: `frontend/src/pages/Settings.js`, `frontend/src/context/ThemeContext.js`, `frontend/src/context/CurrencyContext.js`
+  - Backend: `backend/src/core/routes/auth.js` (for profile updates)
 - **Key Components**:
-  - Profile information management
-  - Dark mode toggle with persistent preferences
-  - Currency selection (USD, EUR, GBP) with persistent preferences
-  - Password management with security validation
+  - Profile information management with validation
+  - Dark/light mode toggle with local storage persistence
+  - Currency preference selection affecting all monetary values across the app
+  - Password management with strong security validation
+  - Unified settings interface with responsive design
+  - Context API implementation for global state management
+- **Code Snippets**:
+  ```jsx
+  // frontend/src/context/ThemeContext.js
+  const ThemeProvider = ({ children }) => {
+    // Initialize theme from localStorage or system preference
+    const getInitialTheme = () => {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme) return savedTheme;
+      
+      // Check for system preference
+      const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      return prefersDarkMode ? 'dark' : 'light';
+    };
+    
+    const [themeMode, setThemeMode] = useState(getInitialTheme);
+    
+    // Create and memoize the theme object
+    const theme = useMemo(() => 
+      createTheme({
+        palette: {
+          mode: themeMode,
+          primary: {
+            main: '#2196f3',
+          },
+          secondary: {
+            main: '#f50057',
+          },
+          background: {
+            default: themeMode === 'light' ? '#f5f5f5' : '#121212',
+            paper: themeMode === 'light' ? '#ffffff' : '#1e1e1e',
+          },
+        },
+        components: {
+          MuiTableRow: {
+            styleOverrides: {
+              root: {
+                '&:nth-of-type(odd)': {
+                  backgroundColor: themeMode === 'light' 
+                    ? 'rgba(0, 0, 0, 0.03)' 
+                    : 'rgba(255, 255, 255, 0.03)',
+                },
+              },
+            },
+          },
+        },
+      }),
+    [themeMode]);
+    
+    // Toggle theme function
+    const toggleTheme = () => {
+      setThemeMode(prevMode => {
+        const newMode = prevMode === 'light' ? 'dark' : 'light';
+        localStorage.setItem('theme', newMode);
+        return newMode;
+      });
+    };
+    
+    return (
+      <ThemeContext.Provider value={{ themeMode, toggleTheme }}>
+        <MuiThemeProvider theme={theme}>
+          <CssBaseline />
+          {children}
+        </MuiThemeProvider>
+      </ThemeContext.Provider>
+    );
+  };
+  
+  // frontend/src/context/CurrencyContext.js
+  const CurrencyProvider = ({ children }) => {
+    // Initialize from localStorage or default to USD
+    const [currency, setCurrency] = useState(
+      localStorage.getItem('currency') || 'USD'
+    );
+    
+    // Currency formatter function using Intl API
+    const formatCurrency = useCallback((value) => {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(value);
+    }, [currency]);
+    
+    // Format large numbers without currency symbol
+    const formatNumber = useCallback((value, digits = 2) => {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits
+      }).format(value);
+    }, []);
+    
+    // Change currency with localStorage persistence
+    const changeCurrency = useCallback((newCurrency) => {
+      setCurrency(newCurrency);
+      localStorage.setItem('currency', newCurrency);
+    }, []);
+    
+    return (
+      <CurrencyContext.Provider 
+        value={{ 
+          currency, 
+          setCurrency: changeCurrency, 
+          formatCurrency, 
+          formatNumber,
+          currencySymbol: currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£'
+        }}
+      >
+        {children}
+      </CurrencyContext.Provider>
+    );
+  };
+  
+  // frontend/src/pages/Settings.js (partial)
+  const Settings = () => {
+    const { user, updateUser } = useAuth();
+    const { themeMode, toggleTheme } = useTheme();
+    const { currency, setCurrency } = useCurrency();
+    
+    const [profileForm, setProfileForm] = useState({
+      name: user?.name || '',
+      email: user?.email || '',
+    });
+    
+    const [passwordForm, setPasswordForm] = useState({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+    
+    const handleProfileSubmit = async (e) => {
+      e.preventDefault();
+      try {
+        const response = await authService.updateProfile(profileForm);
+        updateUser(response.data);
+        toast.success('Profile updated successfully');
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to update profile');
+      }
+    };
+    
+    const handlePasswordSubmit = async (e) => {
+      e.preventDefault();
+      
+      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        toast.error('New passwords do not match');
+        return;
+      }
+      
+      try {
+        await authService.updatePassword(passwordForm);
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        toast.success('Password updated successfully');
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to update password');
+      }
+    };
+    
+    return (
+      <Container maxWidth="md">
+        <Typography variant="h4" component="h1" gutterBottom>
+          Settings
+        </Typography>
+        
+        <Grid container spacing={4}>
+          {/* Profile Information */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h5" gutterBottom>
+                Profile Information
+              </Typography>
+              
+              <form onSubmit={handleProfileSubmit}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Name"
+                      value={profileForm.name}
+                      onChange={(e) => setProfileForm({...profileForm, name: e.target.value})}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Email"
+                      type="email"
+                      value={profileForm.email}
+                      onChange={(e) => setProfileForm({...profileForm, email: e.target.value})}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12}>
+                    <Button type="submit" variant="contained" color="primary">
+                      Update Profile
+                    </Button>
+                  </Grid>
+                </Grid>
+              </form>
+            </Paper>
+          </Grid>
+          
+          {/* Appearance & Currency Settings */}
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3, height: '100%' }}>
+              <Typography variant="h5" gutterBottom>
+                Appearance & Currency
+              </Typography>
+              
+              <List>
+                <ListItem>
+                  <ListItemText 
+                    primary="Theme Mode" 
+                    secondary={themeMode === 'light' ? 'Light Mode' : 'Dark Mode'} 
+                  />
+                  <Switch
+                    edge="end"
+                    checked={themeMode === 'dark'}
+                    onChange={toggleTheme}
+                  />
+                </ListItem>
+                
+                <ListItem>
+                  <ListItemText 
+                    primary="Currency" 
+                    secondary="Select your preferred currency" 
+                  />
+                  <Select
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    size="small"
+                  >
+                    <MenuItem value="USD">USD ($)</MenuItem>
+                    <MenuItem value="EUR">EUR (€)</MenuItem>
+                    <MenuItem value="GBP">GBP (£)</MenuItem>
+                  </Select>
+                </ListItem>
+              </List>
+            </Paper>
+          </Grid>
+          
+          {/* Password Management */}
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3, height: '100%' }}>
+              <Typography variant="h5" gutterBottom>
+                Password Management
+              </Typography>
+              
+              <form onSubmit={handlePasswordSubmit}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Current Password"
+                      type="password"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="New Password"
+                      type="password"
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+                      helperText="Password must be at least 8 characters and include uppercase, lowercase, number, and special character"
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Confirm New Password"
+                      type="password"
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
+                      error={passwordForm.newPassword !== passwordForm.confirmPassword}
+                      helperText={passwordForm.newPassword !== passwordForm.confirmPassword ? "Passwords don't match" : ""}
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12}>
+                    <Button 
+                      type="submit" 
+                      variant="contained" 
+                      color="primary"
+                      disabled={!passwordForm.currentPassword || !passwordForm.newPassword || passwordForm.newPassword !== passwordForm.confirmPassword}
+                    >
+                      Update Password
+                    </Button>
+                  </Grid>
+                </Grid>
+              </form>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Container>
+    );
+  };
+  ```
 
 ## Known Issues & Future Enhancements
 
@@ -760,31 +1501,34 @@ The API is available at `http://localhost:3001/api` with the following main endp
 ## Project Structure
 
 ```
-crypto-portfolio/
-├── frontend/                 # React.js frontend application
+crypto-portfolio-management/
+├── frontend/                 # React frontend application
 │   ├── public/               # Static files
-│   ├── src/                  # Source code
-│   │   ├── components/       # Reusable UI components
-│   │   ├── pages/            # Page components
-│   │   ├── context/          # React context providers
-│   │   ├── services/         # API service clients
-│   │   ├── utils/            # Utility functions
-│   │   └── App.js            # Main application component
-│   └── package.json          # Frontend dependencies
-│
-├── backend/                  # Node.js backend application
-│   ├── src/
-│   │   ├── middleware/       # Express middleware functions
-│   │   ├── services/         # Business logic services
-│   │   ├── controllers/      # Route controllers
-│   │   ├── models/           # MongoDB models
-│   │   ├── routes/           # API routes
-│   │   ├── utils/            # Utility functions
-│   │   ├── app.js            # Express application setup
-│   │   └── index.js          # Application entry point
-│   └── package.json          # Backend dependencies
-│
-└── README.md                 # Project documentation
+│   └── src/                  # Source files
+│       ├── components/       # Reusable UI components
+│       ├── context/          # React context providers
+│       ├── pages/            # Page components
+│       ├── services/         # API service integrations
+│       └── utils/            # Utility functions
+└── backend/                  # Node.js backend application
+    ├── logs/                 # Application logs
+    └── src/                  # Source files
+        ├── middleware/       # Express middleware
+        │   ├── database/     # Database connection
+        │   ├── error/        # Error handling
+        │   ├── performance/  # Caching and optimization
+        │   ├── request/      # Request validation
+        │   └── security/     # Authentication and security
+        ├── core/             # Backend core functionality
+        │   ├── controllers/  # Request handlers
+        │   ├── models/       # Mongoose data models
+        │   ├── routes/       # API route definitions
+        │   ├── services/     # Business logic
+        │   └── utils/        # Core utilities
+        ├── utils/            # Shared utilities
+        │   └── logger.js     # Centralized logging service
+        ├── app.js            # Express app setup
+        └── index.js          # Entry point
 ```
 
 ## Contributing
