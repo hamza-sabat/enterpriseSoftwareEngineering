@@ -156,24 +156,29 @@ The application follows a three-tier architecture with clear separation of conce
 ### Frontend (User Interface)
 ```
 frontend/
+├── public/               # Static files
 ├── src/
-    ├── components/     # Reusable UI components
-    ├── pages/          # Main application views
-    │   ├── Login.js    # Authentication interface
-    │   ├── Market.js   # Cryptocurrency market view
-    │   ├── Portfolio.js # User's portfolio management
-    │   └── Settings.js # User preferences and settings
-    ├── services/       # API integration services
-    │   ├── api.js      # Base API client setup
+    ├── components/       # Reusable UI components
+    │   ├── Navigation.js # Navigation bar component
+    │   └── ProtectedRoute.js # Authentication route wrapper
+    ├── pages/            # Main application views
+    │   ├── Login.js      # Authentication interface
+    │   ├── Market.js     # Cryptocurrency market view
+    │   ├── Portfolio.js  # User's portfolio management
+    │   └── Settings.js   # User preferences and settings
+    ├── services/         # API integration services
+    │   ├── api.js        # Base API client setup
     │   ├── authService.js # Authentication API methods
     │   ├── marketService.js # Market data API methods
     │   └── portfolioService.js # Portfolio API methods
-    ├── context/        # React context providers
+    ├── context/          # React context providers
     │   ├── AuthContext.js # User authentication management
     │   ├── ThemeContext.js # Dark/light mode management
     │   └── CurrencyContext.js # Currency preferences and formatting
-    ├── utils/          # Utility functions
-    └── App.js          # Main application component
+    ├── utils/            # Utility functions
+    ├── index.js          # Application entry point
+    ├── index.css         # Global styles
+    └── App.js            # Main application component with routing
 ```
 
 The frontend layer provides:
@@ -188,23 +193,37 @@ The frontend layer provides:
 The backend is built with Node.js and Express, following a modular architecture that separates concerns and enables scalable development.
 
 ```
-backend/src/
-├── middleware/     # API middleware components
-│   ├── security/   # Authentication, rate limiting, CORS
-│   ├── performance/ # Caching, compression
-│   ├── logging/    # Logger configuration and request logging
-│   ├── error/      # Error handling middleware
-│   ├── database/   # Database connection management
-│   ├── request/    # Request validation and processing
-│   └── index.js    # Middleware exports and configuration
-├── core/             # Core backend business logic
-│   ├── controllers/  # Route handler controllers
-│   ├── models/       # Database models and schemas
-│   ├── routes/       # API endpoint definitions
-│   ├── services/     # Business logic services
-│   └── utils/        # Backend utility functions
-├── app.js            # Express application setup
-└── index.js          # Server initialization
+backend/
+├── logs/                # Application logs
+├── tests/               # Test files for backend functionality
+├── src/
+    ├── middleware/      # API middleware components
+    │   ├── security/    # Authentication, rate limiting, CORS
+    │   ├── performance/ # Caching, compression
+    │   ├── error/       # Error handling middleware
+    │   ├── database/    # Database connection management
+    │   ├── request/     # Request validation and processing
+    │   └── index.js     # Middleware exports and configuration
+    ├── core/            # Core backend business logic
+    │   ├── controllers/ # Route handler controllers
+    │   │   ├── authController.js     # Authentication handlers
+    │   │   ├── marketController.js   # Market data handlers
+    │   │   └── portfolioController.js # Portfolio handlers
+    │   ├── models/      # Database models and schemas
+    │   │   ├── User.js         # User model
+    │   │   └── Portfolio.js    # Portfolio model
+    │   ├── routes/      # API endpoint definitions
+    │   │   ├── auth.js         # Authentication routes
+    │   │   ├── market.js       # Market data routes
+    │   │   └── portfolio.js    # Portfolio routes
+    │   ├── services/    # Business logic services
+    │   │   ├── authService.js      # Authentication logic
+    │   │   ├── marketService.js    # Market data logic
+    │   │   └── portfolioService.js # Portfolio logic
+    │   └── utils/       # Backend utility functions
+    ├── utils/           # Shared utilities including logging
+    ├── app.js           # Express application setup
+    └── index.js         # Server initialization
 ```
 
 The backend implements a layered architecture:
@@ -1428,31 +1447,43 @@ The API is available at `http://localhost:3001/api` with the following main endp
 crypto-portfolio-management/
 ├── frontend/                 # React frontend application
 │   ├── public/               # Static files
-│   └── src/                  # Source files
-│       ├── components/       # Reusable UI components
-│       ├── context/          # React context providers
-│       ├── pages/            # Page components
-│       ├── services/         # API service integrations
-│       └── utils/            # Utility functions
+│   ├── src/                  # Source files
+│   │   ├── components/       # Reusable UI components
+│   │   │   ├── Navigation.js # Navigation bar component
+│   │   │   └── ProtectedRoute.js # Authentication route wrapper
+│   │   ├── context/          # React context providers
+│   │   ├── pages/            # Page components
+│   │   ├── services/         # API service integrations
+│   │   ├── utils/            # Utility functions
+│   │   ├── App.js            # Main application component
+│   │   ├── index.js          # Application entry point
+│   │   └── index.css         # Global styles
+│   ├── package.json          # Frontend dependencies
+│   └── package-lock.json     # Locked dependencies
 └── backend/                  # Node.js backend application
     ├── logs/                 # Application logs
-    └── src/                  # Source files
-        ├── middleware/       # Express middleware
-        │   ├── database/     # Database connection
-        │   ├── error/        # Error handling
-        │   ├── performance/  # Caching and optimization
-        │   ├── request/      # Request validation
-        │   └── security/     # Authentication and security
-        ├── core/             # Backend core functionality
-        │   ├── controllers/  # Request handlers
-        │   ├── models/       # Mongoose data models
-        │   ├── routes/       # API route definitions
-        │   ├── services/     # Business logic
-        │   └── utils/        # Core utilities
-        ├── utils/            # Shared utilities
-        │   └── logger.js     # Centralized logging service
-        ├── app.js            # Express app setup
-        └── index.js          # Entry point
+    ├── tests/                # Test files
+    ├── src/                  # Source files
+    │   ├── middleware/       # Express middleware
+    │   │   ├── database/     # Database connection
+    │   │   ├── error/        # Error handling
+    │   │   ├── performance/  # Caching and optimization
+    │   │   ├── request/      # Request validation
+    │   │   ├── security/     # Authentication and security
+    │   │   └── index.js      # Middleware exports
+    │   ├── core/             # Backend core functionality
+    │   │   ├── controllers/  # Request handlers
+    │   │   ├── models/       # Mongoose data models
+    │   │   ├── routes/       # API route definitions
+    │   │   ├── services/     # Business logic
+    │   │   └── utils/        # Core utilities
+    │   ├── utils/            # Shared utilities
+    │   ├── app.js            # Express app setup
+    │   └── index.js          # Entry point
+    ├── .env                  # Environment variables
+    ├── .env.example          # Example environment variables
+    ├── package.json          # Backend dependencies
+    └── package-lock.json     # Locked dependencies
 ```
 
 ## Contributing
