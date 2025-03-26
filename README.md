@@ -697,47 +697,19 @@ The API is available at `http://localhost:3001/api` with the following main endp
   - Login and registration forms with comprehensive validation
   - Protected route wrapper for authenticated access control
   - Persistent auth state with React Context API
-- **Code Snippets**:
+- **Frontend Code**:
   ```jsx
-  // frontend/src/context/AuthContext.js
+  // frontend/src/context/AuthContext.js (simplified)
   const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-    
-    // Load user from token on initial mount
-    useEffect(() => {
-      const loadUser = async () => {
-        const token = localStorage.getItem('token');
-        
-        if (!token) {
-          setIsLoading(false);
-          return;
-        }
-        
-        try {
-          const response = await authService.getCurrentUser();
-          setUser(response.data);
-          setIsAuthenticated(true);
-        } catch (error) {
-          localStorage.removeItem('token');
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      
-      loadUser();
-    }, []);
     
     // Login function used by Login component
     const login = async (credentials) => {
-      const response = await authService.login(credentials);
-      const { token, user } = response.data;
-      
+      const { token, user } = (await authService.login(credentials)).data;
       localStorage.setItem('token', token);
       setUser(user);
       setIsAuthenticated(true);
-      
       return user;
     };
     
@@ -749,14 +721,7 @@ The API is available at `http://localhost:3001/api` with the following main endp
     };
     
     return (
-      <AuthContext.Provider value={{
-        user,
-        isAuthenticated,
-        isLoading,
-        login,
-        logout,
-        updateUser: (userData) => setUser(userData)
-      }}>
+      <AuthContext.Provider value={{ user, isAuthenticated, login, logout }}>
         {children}
       </AuthContext.Provider>
     );
@@ -764,13 +729,88 @@ The API is available at `http://localhost:3001/api` with the following main endp
   
   // Protected Route implementation
   const ProtectedRoute = ({ children }) => {
-    const { isAuthenticated, isLoading } = useAuth();
-    
-    if (isLoading) {
-      return <CircularProgress />;
+    const { isAuthenticated } = useAuth();
+    return isAuthenticated ? children : <Navigate to="/login" />;
+  };
+  ```
+- **Backend Code**:
+  ```javascript
+  // backend/src/core/routes/auth.js
+  const express = require('express');
+  const router = express.Router();
+  const authController = require('../controllers/authController');
+  const { authenticate } = require('../../middleware/security/auth');
+  const { validateRequest } = require('../../middleware/request/validation');
+
+  // Auth routes
+  router.post('/register', validateRequest('register'), authController.register);
+  router.post('/login', validateRequest('login'), authController.login);
+  router.get('/me', authenticate, authController.getCurrentUser);
+  router.put('/profile', authenticate, validateRequest('updateProfile'), authController.updateProfile);
+  router.put('/password', authenticate, validateRequest('updatePassword'), authController.updatePassword);
+
+  module.exports = router;
+  
+  // backend/src/core/controllers/authController.js (simplified)
+  const AuthService = require('../services/authService');
+  const authService = new AuthService();
+  
+  class AuthController {
+    async login(req, res, next) {
+      try {
+        const { email, password } = req.body;
+        const result = await authService.authenticateUser(email, password);
+        res.json(result);
+      } catch (error) {
+        next(error);
+      }
     }
     
-    return isAuthenticated ? children : <Navigate to="/login" />;
+    async register(req, res, next) {
+      try {
+        const userData = req.body;
+        const result = await authService.registerUser(userData);
+        res.status(201).json(result);
+      } catch (error) {
+        next(error);
+      }
+    }
+    
+    async getCurrentUser(req, res, next) {
+      try {
+        const userId = req.user.id;
+        const user = await authService.getUserById(userId);
+        res.json(user);
+      } catch (error) {
+        next(error);
+      }
+    }
+  }
+  
+  module.exports = new AuthController();
+  
+  // backend/src/middleware/security/auth.js (simplified) 
+  const authenticate = async (req, res, next) => {
+    try {
+      const authHeader = req.headers.authorization;
+      
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      
+      const token = authHeader.split(' ')[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      
+      const user = await User.findById(decoded.id);
+      if (!user) {
+        return res.status(401).json({ message: 'Invalid token' });
+      }
+      
+      req.user = { id: user._id, email: user.email };
+      next();
+    } catch (error) {
+      return res.status(401).json({ message: 'Authentication failed' });
+    }
   };
   ```
 - **Endpoints**: 
@@ -790,108 +830,47 @@ The API is available at `http://localhost:3001/api` with the following main endp
   - Multi-criteria filtering (market cap, price range, volume, etc.)
   - Customizable sorting by various metrics with visual indicators
   - 24h change indicators with color-coded visual cues
-  - Dynamic currency formatting based on user preferences via Context API
-  - Performance optimized data grid with virtual scrolling for large datasets
-- **Code Snippets**:
+  - Dynamic currency formatting based on user preferences
+- **Frontend Code**:
   ```jsx
-  // frontend/src/pages/Market.js
+  // frontend/src/pages/Market.js (simplified)
   const Market = () => {
     const { currency } = useCurrency();
     const [cryptocurrencies, setCryptocurrencies] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'market_cap', direction: 'desc' });
-    const [filters, setFilters] = useState({
-      priceMin: '',
-      priceMax: '',
-      marketCapMin: '',
-      marketCapMax: '',
-      changeFilter: 'all' // 'positive', 'negative', 'all'
-    });
     
-    // Fetch cryptocurrency listings from API
+    // Fetch cryptocurrency listings from API with auto-refresh
     useEffect(() => {
       const fetchData = async () => {
-        try {
-          setLoading(true);
-          const response = await marketService.getListings({ currency });
-          setCryptocurrencies(response.data);
-        } catch (error) {
-          console.error('Failed to fetch market data:', error);
-        } finally {
-          setLoading(false);
-        }
+        const response = await marketService.getListings({ currency });
+        setCryptocurrencies(response.data);
       };
       
       fetchData();
-      
-      // Auto-refresh market data every 60 seconds
-      const interval = setInterval(fetchData, 60000);
+      const interval = setInterval(fetchData, 60000); // Refresh every minute
       return () => clearInterval(interval);
     }, [currency]);
     
     // Apply search, filters, and sorting
     const filteredCryptos = useMemo(() => {
       return cryptocurrencies
-        .filter(crypto => {
-          // Search filter
-          if (searchTerm && !crypto.name.toLowerCase().includes(searchTerm.toLowerCase()) && 
-              !crypto.symbol.toLowerCase().includes(searchTerm.toLowerCase())) {
-            return false;
-          }
-          
-          // Price filter
-          if (filters.priceMin && crypto.price < parseFloat(filters.priceMin)) return false;
-          if (filters.priceMax && crypto.price > parseFloat(filters.priceMax)) return false;
-          
-          // Market cap filter
-          if (filters.marketCapMin && crypto.market_cap < parseFloat(filters.marketCapMin)) return false;
-          if (filters.marketCapMax && crypto.market_cap > parseFloat(filters.marketCapMax)) return false;
-          
-          // Change filter
-          if (filters.changeFilter === 'positive' && crypto.percent_change_24h <= 0) return false;
-          if (filters.changeFilter === 'negative' && crypto.percent_change_24h >= 0) return false;
-          
-          return true;
-        })
-        .sort((a, b) => {
-          // Handle sorting
-          if (a[sortConfig.key] < b[sortConfig.key]) {
-            return sortConfig.direction === 'asc' ? -1 : 1;
-          }
-          if (a[sortConfig.key] > b[sortConfig.key]) {
-            return sortConfig.direction === 'asc' ? 1 : -1;
-          }
-          return 0;
-        });
-    }, [cryptocurrencies, searchTerm, filters, sortConfig]);
+        .filter(/* filtering logic */)
+        .sort(/* sorting logic */);
+    }, [cryptocurrencies, searchTerm, /* other dependencies */]);
     
     return (
-      <Container maxWidth="xl">
-        <Typography variant="h4" component="h1" gutterBottom>
-          Cryptocurrency Market
-        </Typography>
-        
-        {/* Search and filter controls */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="Search by name or symbol"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </Grid>
-            
-            {/* Additional filter controls omitted for brevity */}
-          </Grid>
-        </Paper>
+      <Container>
+        {/* Search controls */}
+        <TextField 
+          label="Search by name or symbol"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
         
         {/* Market data table */}
         <MarketTable 
           data={filteredCryptos} 
-          loading={loading} 
           sortConfig={sortConfig} 
           onSort={setSortConfig} 
         />
@@ -899,11 +878,111 @@ The API is available at `http://localhost:3001/api` with the following main endp
     );
   };
   ```
+- **Backend Code**:
+  ```javascript
+  // backend/src/core/routes/market.js
+  const express = require('express');
+  const router = express.Router();
+  const marketController = require('../controllers/marketController');
+  const { cacheMiddleware } = require('../../middleware/performance/cache');
+
+  // Market data routes with caching
+  router.get('/listings', cacheMiddleware(300), marketController.getListings);
+  router.get('/global', cacheMiddleware(600), marketController.getGlobalMetrics);
+  router.get('/search', marketController.searchCryptocurrencies);
+  router.get('/crypto/:symbol', cacheMiddleware(300), marketController.getCryptoDetails);
+
+  module.exports = router;
+  
+  // backend/src/core/controllers/marketController.js (simplified)
+  const MarketService = require('../services/marketService');
+  const marketService = new MarketService();
+  
+  const getListings = async (req, res, next) => {
+    try {
+      const { limit = 100, page = 1, currency = 'USD' } = req.query;
+      const result = await marketService.getListings({
+        limit: parseInt(limit),
+        page: parseInt(page),
+        currency
+      });
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
+  
+  const searchCryptocurrencies = async (req, res, next) => {
+    try {
+      const { query } = req.query;
+      if (!query) {
+        return res.status(400).json({ message: 'Search query is required' });
+      }
+      
+      const results = await marketService.searchCryptocurrencies(query);
+      res.json(results);
+    } catch (error) {
+      next(error);
+    }
+  };
+  
+  // backend/src/core/services/marketService.js (simplified)
+  class MarketService {
+    constructor() {
+      this.apiUrl = process.env.CRYPTO_API_URL;
+      this.apiKey = process.env.CRYPTO_API_KEY;
+    }
+    
+    async getListings(options = {}) {
+      const { limit = 100, page = 1, currency = 'USD' } = options;
+      
+      try {
+        const response = await axios.get(`${this.apiUrl}/listings/latest`, {
+          headers: { 'X-CMC_PRO_API_KEY': this.apiKey },
+          params: {
+            limit,
+            start: (page - 1) * limit + 1,
+            convert: currency
+          }
+        });
+        
+        // Process and format the response data
+        return this.formatListingsResponse(response.data, currency);
+      } catch (error) {
+        logger.error('Error fetching market listings:', error);
+        throw new Error('Failed to fetch market data');
+      }
+    }
+    
+    formatListingsResponse(data, currency) {
+      const currencyKey = currency.toLowerCase();
+      
+      return {
+        data: data.data.map(crypto => ({
+          id: crypto.id,
+          name: crypto.name,
+          symbol: crypto.symbol,
+          price: crypto.quote[currency].price,
+          market_cap: crypto.quote[currency].market_cap,
+          volume_24h: crypto.quote[currency].volume_24h,
+          percent_change_24h: crypto.quote[currency].percent_change_24h,
+          percent_change_7d: crypto.quote[currency].percent_change_7d,
+          last_updated: crypto.quote[currency].last_updated
+        })),
+        pagination: {
+          total: data.status.total_count,
+          limit,
+          page
+        }
+      };
+    }
+  }
+  ```
 - **Endpoints**: 
-  - `GET /api/market/listings` - Get cryptocurrency listings with optional query parameters for pagination and filtering
-  - `GET /api/market/global` - Get global market metrics (total market cap, volume, etc.)
-  - `GET /api/market/search?query=bitcoin` - Search cryptocurrencies by name or symbol
-  - `GET /api/market/crypto/:symbol` - Get detailed information for a specific cryptocurrency
+  - `GET /api/market/listings` - Get cryptocurrency listings with optional query parameters 
+  - `GET /api/market/global` - Get global market metrics
+  - `GET /api/market/search?query=bitcoin` - Search cryptocurrencies
+  - `GET /api/market/crypto/:symbol` - Get detailed information for a cryptocurrency
 
 ### Portfolio Management
 - **Purpose**: Comprehensive crypto portfolio tracking system with real-time valuation, performance analytics, and visualization tools
@@ -914,223 +993,194 @@ The API is available at `http://localhost:3001/api` with the following main endp
   - CRUD operations for cryptocurrency holdings with user-friendly forms
   - Automatic calculation of current values and profit/loss metrics in real-time
   - Performance analytics including ROI, total value, and cost basis
-  - Interactive data visualization with customizable charts (pie, line, bar)
+  - Interactive data visualization with customizable charts
   - Powerful search, filter, and sort capabilities for holdings management
-  - Best and worst performers identification with intelligent ranking
-  - Responsive design for both desktop and mobile viewing
-- **Code Snippets**:
+- **Frontend Code**:
   ```jsx
-  // frontend/src/pages/Portfolio.js
+  // frontend/src/pages/Portfolio.js (simplified)
   const Portfolio = () => {
-    const { currency, formatCurrency } = useCurrency();
+    const { formatCurrency } = useCurrency();
     const [portfolio, setPortfolio] = useState(null);
     const [marketData, setMarketData] = useState({});
-    const [loading, setLoading] = useState(true);
-    const [modalOpen, setModalOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [sortBy, setSortBy] = useState('value');
-    const [sortDirection, setSortDirection] = useState('desc');
     
-    // Fetch portfolio data
-    const fetchPortfolio = useCallback(async () => {
-      try {
-        setLoading(true);
-        const response = await portfolioService.getPortfolio();
-        setPortfolio(response.data);
-        
-        // Fetch current market prices for all holdings
-        if (response.data?.holdings?.length) {
-          const symbols = response.data.holdings.map(h => h.symbol).join(',');
-          const marketResponse = await marketService.getMarketDataBySymbols(symbols, currency);
-          
-          // Create a map of symbol -> market data for easy lookup
-          const marketDataMap = {};
-          marketResponse.data.forEach(crypto => {
-            marketDataMap[crypto.symbol] = crypto;
-          });
-          
-          setMarketData(marketDataMap);
-        }
-      } catch (error) {
-        console.error('Failed to fetch portfolio:', error);
-      } finally {
-        setLoading(false);
-      }
-    }, [currency]);
-    
+    // Fetch portfolio and market data
     useEffect(() => {
-      fetchPortfolio();
-    }, [fetchPortfolio]);
-    
-    // Calculate portfolio metrics with current market prices
-    const portfolioMetrics = useMemo(() => {
-      if (!portfolio?.holdings?.length || Object.keys(marketData).length === 0) {
-        return {
-          totalValue: 0,
-          totalCost: 0,
-          totalProfit: 0,
-          totalProfitPercentage: 0
-        };
-      }
+      const fetchData = async () => {
+        const portfolioData = await portfolioService.getPortfolio();
+        setPortfolio(portfolioData.data);
+        
+        // Fetch prices for holdings
+        const symbols = portfolioData.data?.holdings?.map(h => h.symbol).join(',');
+        const marketResponse = await marketService.getMarketDataBySymbols(symbols);
+        setMarketData(marketResponse.data.reduce((acc, crypto) => {
+          acc[crypto.symbol] = crypto;
+          return acc;
+        }, {}));
+      };
       
-      // Calculate totals
-      const metrics = portfolio.holdings.reduce((acc, holding) => {
+      fetchData();
+    }, []);
+    
+    // Calculate portfolio metrics
+    const metrics = useMemo(() => {
+      if (!portfolio?.holdings?.length) return { totalValue: 0, totalCost: 0, totalProfit: 0 };
+      
+      return portfolio.holdings.reduce((acc, holding) => {
         const currentPrice = marketData[holding.symbol]?.price || 0;
         const currentValue = holding.amount * currentPrice;
         const cost = holding.amount * holding.purchasePrice;
-        const profit = currentValue - cost;
-        const profitPercentage = cost > 0 ? (profit / cost) * 100 : 0;
         
         return {
           totalValue: acc.totalValue + currentValue,
           totalCost: acc.totalCost + cost,
-          totalProfit: acc.totalProfit + profit,
-          holdings: [
-            ...acc.holdings,
-            {
-              ...holding,
-              currentPrice,
-              currentValue,
-              profit,
-              profitPercentage
-            }
-          ]
+          totalProfit: acc.totalProfit + (currentValue - cost),
+          // Additional metrics calculation
         };
-      }, { totalValue: 0, totalCost: 0, totalProfit: 0, holdings: [] });
-      
-      metrics.totalProfitPercentage = metrics.totalCost > 0 
-        ? (metrics.totalProfit / metrics.totalCost) * 100 
-        : 0;
-        
-      // Sort and filter holdings  
-      let processedHoldings = metrics.holdings;
-      
-      if (searchTerm) {
-        processedHoldings = processedHoldings.filter(
-          h => h.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-               h.symbol.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
-      
-      processedHoldings.sort((a, b) => {
-        const aValue = a[sortBy];
-        const bValue = b[sortBy];
-        
-        if (typeof aValue === 'string') {
-          return sortDirection === 'asc' 
-            ? aValue.localeCompare(bValue)
-            : bValue.localeCompare(aValue);
-        }
-        
-        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-      });
-      
-      metrics.holdings = processedHoldings;
-      
-      return metrics;
-    }, [portfolio, marketData, searchTerm, sortBy, sortDirection]);
+      }, { totalValue: 0, totalCost: 0, totalProfit: 0 });
+    }, [portfolio, marketData]);
     
     return (
-      <Container maxWidth="xl">
+      <Container>
+        {/* Summary Cards */}
         <Grid container spacing={3}>
-          {/* Portfolio Summary Cards */}
           <Grid item xs={12} md={3}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6">Total Value</Typography>
-              <Typography variant="h4">{formatCurrency(portfolioMetrics.totalValue)}</Typography>
-            </Paper>
+            <Typography>Total Value</Typography>
+            <Typography>{formatCurrency(metrics.totalValue)}</Typography>
           </Grid>
           
-          <Grid item xs={12} md={3}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6">Total Cost</Typography>
-              <Typography variant="h4">{formatCurrency(portfolioMetrics.totalCost)}</Typography>
-            </Paper>
-          </Grid>
+          {/* Portfolio visualization */}
+          <PortfolioPieChart holdings={portfolio?.holdings || []} />
           
-          <Grid item xs={12} md={3}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6">Total Profit/Loss</Typography>
-              <Typography 
-                variant="h4" 
-                color={portfolioMetrics.totalProfit >= 0 ? 'success.main' : 'error.main'}
-              >
-                {formatCurrency(portfolioMetrics.totalProfit)}
-                {' '}
-                <Typography component="span" color="textSecondary">
-                  ({portfolioMetrics.totalProfitPercentage.toFixed(2)}%)
-                </Typography>
-              </Typography>
-            </Paper>
-          </Grid>
-          
-          <Grid item xs={12} md={3}>
-            <Button 
-              fullWidth 
-              variant="contained" 
-              onClick={() => setModalOpen(true)}
-              sx={{ height: '100%' }}
-            >
-              Add New Holding
-            </Button>
-          </Grid>
-          
-          {/* Portfolio Composition Chart */}
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>Portfolio Composition</Typography>
-              <PortfolioPieChart 
-                holdings={portfolioMetrics.holdings} 
-                currency={currency} 
-              />
-            </Paper>
-          </Grid>
-          
-          {/* Performance Chart */}
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>Performance by Asset</Typography>
-              <PerformanceBarChart 
-                holdings={portfolioMetrics.holdings} 
-                currency={currency} 
-              />
-            </Paper>
-          </Grid>
-          
-          {/* Holdings Table */}
-          <Grid item xs={12}>
-            <Paper>
-              <PortfolioTable 
-                holdings={portfolioMetrics.holdings}
-                loading={loading}
-                onSort={(field) => {
-                  if (sortBy === field) {
-                    setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                  } else {
-                    setSortBy(field);
-                    setSortDirection('desc');
-                  }
-                }}
-                sortBy={sortBy}
-                sortDirection={sortDirection}
-                onDelete={handleDeleteHolding}
-                onEdit={handleEditHolding}
-                currency={currency}
-              />
-            </Paper>
-          </Grid>
+          {/* Holdings table */}
+          <PortfolioTable 
+            holdings={portfolio?.holdings || []} 
+            marketData={marketData}
+          />
         </Grid>
-        
-        {/* Add/Edit Holding Modal */}
-        <AddHoldingModal 
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          onSubmit={handleAddHolding}
-          currency={currency}
-        />
       </Container>
     );
   };
+  ```
+- **Backend Code**:
+  ```javascript
+  // backend/src/core/routes/portfolio.js
+  const express = require('express');
+  const router = express.Router();
+  const portfolioController = require('../controllers/portfolioController');
+  const { authenticate } = require('../../middleware/security/auth');
+  const { validateRequest } = require('../../middleware/request/validation');
+
+  // Apply authentication middleware to all portfolio routes
+  router.use(authenticate);
+
+  // Portfolio management routes
+  router.get('/', portfolioController.getPortfolio);
+  router.post('/holdings', validateRequest('addHolding'), portfolioController.addHolding);
+  router.put('/holdings/:id', validateRequest('updateHolding'), portfolioController.updateHolding);
+  router.delete('/holdings/:id', portfolioController.removeHolding);
+  router.get('/performance', portfolioController.getPerformance);
+
+  module.exports = router;
+  
+  // backend/src/core/controllers/portfolioController.js (simplified)
+  const PortfolioService = require('../services/portfolioService');
+  const portfolioService = new PortfolioService();
+  
+  class PortfolioController {
+    async getPortfolio(req, res, next) {
+      try {
+        const userId = req.user.id;
+        const portfolio = await portfolioService.getPortfolioByUserId(userId);
+        res.json(portfolio);
+      } catch (error) {
+        next(error);
+      }
+    }
+    
+    async addHolding(req, res, next) {
+      try {
+        const userId = req.user.id;
+        const holdingData = req.body;
+        
+        const result = await portfolioService.addHolding(userId, holdingData);
+        res.status(201).json(result);
+      } catch (error) {
+        next(error);
+      }
+    }
+    
+    async updateHolding(req, res, next) {
+      try {
+        const userId = req.user.id;
+        const holdingId = req.params.id;
+        const holdingData = req.body;
+        
+        const result = await portfolioService.updateHolding(userId, holdingId, holdingData);
+        res.json(result);
+      } catch (error) {
+        next(error);
+      }
+    }
+    
+    async removeHolding(req, res, next) {
+      try {
+        const userId = req.user.id;
+        const holdingId = req.params.id;
+        
+        await portfolioService.removeHolding(userId, holdingId);
+        res.status(204).end();
+      } catch (error) {
+        next(error);
+      }
+    }
+  }
+  
+  // backend/src/core/services/portfolioService.js (simplified)
+  class PortfolioService {
+    async getPortfolioByUserId(userId) {
+      try {
+        // Find or create portfolio for user
+        let portfolio = await Portfolio.findOne({ user: userId });
+        
+        if (!portfolio) {
+          portfolio = await Portfolio.create({
+            user: userId,
+            holdings: []
+          });
+        }
+        
+        return portfolio;
+      } catch (error) {
+        logger.error(`Error fetching portfolio for user ${userId}:`, error);
+        throw new Error('Failed to fetch portfolio');
+      }
+    }
+    
+    async addHolding(userId, holdingData) {
+      try {
+        const portfolio = await this.getPortfolioByUserId(userId);
+        
+        // Add new holding to portfolio
+        portfolio.holdings.push({
+          cryptoId: holdingData.cryptoId,
+          name: holdingData.name,
+          symbol: holdingData.symbol,
+          amount: holdingData.amount,
+          purchasePrice: holdingData.purchasePrice,
+          purchaseDate: holdingData.purchaseDate || new Date(),
+          notes: holdingData.notes || ''
+        });
+        
+        // Save updated portfolio
+        await portfolio.save();
+        
+        return portfolio;
+      } catch (error) {
+        logger.error(`Error adding holding for user ${userId}:`, error);
+        throw new Error('Failed to add holding');
+      }
+    }
+  }
   ```
 - **Endpoints**: 
   - `GET /api/portfolio` - Get user's portfolio with all holdings
@@ -1149,64 +1199,28 @@ The API is available at `http://localhost:3001/api` with the following main endp
   - Dark/light mode toggle with local storage persistence
   - Currency preference selection affecting all monetary values across the app
   - Password management with strong security validation
-  - Unified settings interface with responsive design
-  - Context API implementation for global state management
-- **Code Snippets**:
+- **Frontend Code**:
   ```jsx
-  // frontend/src/context/ThemeContext.js
+  // frontend/src/context/ThemeContext.js (simplified)
   const ThemeProvider = ({ children }) => {
-    // Initialize theme from localStorage or system preference
-    const getInitialTheme = () => {
-      const savedTheme = localStorage.getItem('theme');
-      if (savedTheme) return savedTheme;
-      
-      // Check for system preference
-      const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      return prefersDarkMode ? 'dark' : 'light';
-    };
-    
-    const [themeMode, setThemeMode] = useState(getInitialTheme);
-    
-    // Create and memoize the theme object
-    const theme = useMemo(() => 
-      createTheme({
-        palette: {
-          mode: themeMode,
-          primary: {
-            main: '#2196f3',
-          },
-          secondary: {
-            main: '#f50057',
-          },
-          background: {
-            default: themeMode === 'light' ? '#f5f5f5' : '#121212',
-            paper: themeMode === 'light' ? '#ffffff' : '#1e1e1e',
-          },
-        },
-        components: {
-          MuiTableRow: {
-            styleOverrides: {
-              root: {
-                '&:nth-of-type(odd)': {
-                  backgroundColor: themeMode === 'light' 
-                    ? 'rgba(0, 0, 0, 0.03)' 
-                    : 'rgba(255, 255, 255, 0.03)',
-                },
-              },
-            },
-          },
-        },
-      }),
-    [themeMode]);
+    const [themeMode, setThemeMode] = useState(
+      localStorage.getItem('theme') || 'light'
+    );
     
     // Toggle theme function
     const toggleTheme = () => {
-      setThemeMode(prevMode => {
-        const newMode = prevMode === 'light' ? 'dark' : 'light';
-        localStorage.setItem('theme', newMode);
-        return newMode;
-      });
+      const newMode = themeMode === 'light' ? 'dark' : 'light';
+      localStorage.setItem('theme', newMode);
+      setThemeMode(newMode);
     };
+    
+    // Create theme with appropriate colors
+    const theme = createTheme({
+      palette: {
+        mode: themeMode,
+        // Theme configuration
+      }
+    });
     
     return (
       <ThemeContext.Provider value={{ themeMode, toggleTheme }}>
@@ -1218,246 +1232,164 @@ The API is available at `http://localhost:3001/api` with the following main endp
     );
   };
   
-  // frontend/src/context/CurrencyContext.js
-  const CurrencyProvider = ({ children }) => {
-    // Initialize from localStorage or default to USD
-    const [currency, setCurrency] = useState(
-      localStorage.getItem('currency') || 'USD'
-    );
-    
-    // Currency formatter function using Intl API
-    const formatCurrency = useCallback((value) => {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(value);
-    }, [currency]);
-    
-    // Format large numbers without currency symbol
-    const formatNumber = useCallback((value, digits = 2) => {
-      return new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: digits,
-        maximumFractionDigits: digits
-      }).format(value);
-    }, []);
-    
-    // Change currency with localStorage persistence
-    const changeCurrency = useCallback((newCurrency) => {
-      setCurrency(newCurrency);
-      localStorage.setItem('currency', newCurrency);
-    }, []);
-    
-    return (
-      <CurrencyContext.Provider 
-        value={{ 
-          currency, 
-          setCurrency: changeCurrency, 
-          formatCurrency, 
-          formatNumber,
-          currencySymbol: currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '£'
-        }}
-      >
-        {children}
-      </CurrencyContext.Provider>
-    );
-  };
-  
-  // frontend/src/pages/Settings.js (partial)
+  // frontend/src/pages/Settings.js (simplified)
   const Settings = () => {
-    const { user, updateUser } = useAuth();
+    const { user } = useAuth();
     const { themeMode, toggleTheme } = useTheme();
     const { currency, setCurrency } = useCurrency();
     
-    const [profileForm, setProfileForm] = useState({
-      name: user?.name || '',
-      email: user?.email || '',
-    });
-    
-    const [passwordForm, setPasswordForm] = useState({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    });
-    
-    const handleProfileSubmit = async (e) => {
-      e.preventDefault();
-      try {
-        const response = await authService.updateProfile(profileForm);
-        updateUser(response.data);
-        toast.success('Profile updated successfully');
-      } catch (error) {
-        toast.error(error.response?.data?.message || 'Failed to update profile');
-      }
-    };
-    
-    const handlePasswordSubmit = async (e) => {
-      e.preventDefault();
-      
-      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-        toast.error('New passwords do not match');
-        return;
-      }
-      
-      try {
-        await authService.updatePassword(passwordForm);
-        setPasswordForm({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
-        });
-        toast.success('Password updated successfully');
-      } catch (error) {
-        toast.error(error.response?.data?.message || 'Failed to update password');
-      }
-    };
-    
     return (
-      <Container maxWidth="md">
-        <Typography variant="h4" component="h1" gutterBottom>
-          Settings
-        </Typography>
+      <Container>
+        <Typography variant="h4">Settings</Typography>
         
-        <Grid container spacing={4}>
-          {/* Profile Information */}
-          <Grid item xs={12}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h5" gutterBottom>
-                Profile Information
-              </Typography>
-              
-              <form onSubmit={handleProfileSubmit}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Name"
-                      value={profileForm.name}
-                      onChange={(e) => setProfileForm({...profileForm, name: e.target.value})}
-                    />
-                  </Grid>
-                  
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Email"
-                      type="email"
-                      value={profileForm.email}
-                      onChange={(e) => setProfileForm({...profileForm, email: e.target.value})}
-                    />
-                  </Grid>
-                  
-                  <Grid item xs={12}>
-                    <Button type="submit" variant="contained" color="primary">
-                      Update Profile
-                    </Button>
-                  </Grid>
-                </Grid>
-              </form>
-            </Paper>
-          </Grid>
-          
-          {/* Appearance & Currency Settings */}
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, height: '100%' }}>
-              <Typography variant="h5" gutterBottom>
-                Appearance & Currency
-              </Typography>
-              
-              <List>
-                <ListItem>
-                  <ListItemText 
-                    primary="Theme Mode" 
-                    secondary={themeMode === 'light' ? 'Light Mode' : 'Dark Mode'} 
-                  />
-                  <Switch
-                    edge="end"
-                    checked={themeMode === 'dark'}
-                    onChange={toggleTheme}
-                  />
-                </ListItem>
-                
-                <ListItem>
-                  <ListItemText 
-                    primary="Currency" 
-                    secondary="Select your preferred currency" 
-                  />
-                  <Select
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                    size="small"
-                  >
-                    <MenuItem value="USD">USD ($)</MenuItem>
-                    <MenuItem value="EUR">EUR (€)</MenuItem>
-                    <MenuItem value="GBP">GBP (£)</MenuItem>
-                  </Select>
-                </ListItem>
-              </List>
-            </Paper>
-          </Grid>
-          
-          {/* Password Management */}
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, height: '100%' }}>
-              <Typography variant="h5" gutterBottom>
-                Password Management
-              </Typography>
-              
-              <form onSubmit={handlePasswordSubmit}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Current Password"
-                      type="password"
-                      value={passwordForm.currentPassword}
-                      onChange={(e) => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
-                    />
-                  </Grid>
-                  
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="New Password"
-                      type="password"
-                      value={passwordForm.newPassword}
-                      onChange={(e) => setPasswordForm({...passwordForm, newPassword: e.target.value})}
-                      helperText="Password must be at least 8 characters and include uppercase, lowercase, number, and special character"
-                    />
-                  </Grid>
-                  
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Confirm New Password"
-                      type="password"
-                      value={passwordForm.confirmPassword}
-                      onChange={(e) => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
-                      error={passwordForm.newPassword !== passwordForm.confirmPassword}
-                      helperText={passwordForm.newPassword !== passwordForm.confirmPassword ? "Passwords don't match" : ""}
-                    />
-                  </Grid>
-                  
-                  <Grid item xs={12}>
-                    <Button 
-                      type="submit" 
-                      variant="contained" 
-                      color="primary"
-                      disabled={!passwordForm.currentPassword || !passwordForm.newPassword || passwordForm.newPassword !== passwordForm.confirmPassword}
-                    >
-                      Update Password
-                    </Button>
-                  </Grid>
-                </Grid>
-              </form>
-            </Paper>
-          </Grid>
-        </Grid>
+        {/* Profile Form */}
+        <Paper>
+          <Typography variant="h5">Profile Information</Typography>
+          <TextField label="Name" defaultValue={user?.name} />
+          <TextField label="Email" defaultValue={user?.email} />
+          <Button variant="contained">Update Profile</Button>
+        </Paper>
+        
+        {/* Theme & Currency Settings */}
+        <Paper>
+          <Typography variant="h5">Appearance & Currency</Typography>
+          <Switch 
+            checked={themeMode === 'dark'} 
+            onChange={toggleTheme} 
+          />
+          <Select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+          >
+            <MenuItem value="USD">USD ($)</MenuItem>
+            <MenuItem value="EUR">EUR (€)</MenuItem>
+            <MenuItem value="GBP">GBP (£)</MenuItem>
+          </Select>
+        </Paper>
       </Container>
     );
   };
   ```
+- **Backend Code**:
+  ```javascript
+  // backend/src/core/routes/auth.js (settings-related routes)
+  const express = require('express');
+  const router = express.Router();
+  const authController = require('../controllers/authController');
+  const { authenticate } = require('../../middleware/security/auth');
+  const { validateRequest } = require('../../middleware/request/validation');
+
+  // User settings routes (part of auth routes)
+  router.put('/profile', authenticate, validateRequest('updateProfile'), authController.updateProfile);
+  router.put('/settings', authenticate, validateRequest('updateSettings'), authController.updateSettings);
+  router.put('/password', authenticate, validateRequest('updatePassword'), authController.updatePassword);
+
+  module.exports = router;
+  
+  // backend/src/core/controllers/authController.js (settings-related methods)
+  class AuthController {
+    // ... other auth methods ...
+    
+    async updateProfile(req, res, next) {
+      try {
+        const userId = req.user.id;
+        const { name, email } = req.body;
+        
+        const updatedUser = await authService.updateUserProfile(userId, { name, email });
+        res.json(updatedUser);
+      } catch (error) {
+        next(error);
+      }
+    }
+    
+    async updateSettings(req, res, next) {
+      try {
+        const userId = req.user.id;
+        const { theme, currency } = req.body;
+        
+        const updatedSettings = await authService.updateUserSettings(userId, { theme, currency });
+        res.json(updatedSettings);
+      } catch (error) {
+        next(error);
+      }
+    }
+    
+    async updatePassword(req, res, next) {
+      try {
+        const userId = req.user.id;
+        const { currentPassword, newPassword } = req.body;
+        
+        await authService.updateUserPassword(userId, currentPassword, newPassword);
+        res.json({ message: 'Password updated successfully' });
+      } catch (error) {
+        next(error);
+      }
+    }
+  }
+  
+  // backend/src/core/services/authService.js (settings-related methods)
+  class AuthService {
+    // ... other auth methods ...
+    
+    async updateUserProfile(userId, profileData) {
+      try {
+        const user = await User.findById(userId);
+        
+        if (!user) {
+          throw new Error('User not found');
+        }
+        
+        // Update user profile fields
+        if (profileData.name) user.name = profileData.name;
+        if (profileData.email) {
+          // Check if email is already in use
+          const existingUser = await User.findOne({ email: profileData.email });
+          if (existingUser && existingUser._id.toString() !== userId) {
+            throw new Error('Email is already in use');
+          }
+          user.email = profileData.email;
+        }
+        
+        await user.save();
+        
+        return {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          settings: user.settings
+        };
+      } catch (error) {
+        logger.error(`Error updating profile for user ${userId}:`, error);
+        throw error;
+      }
+    }
+    
+    async updateUserSettings(userId, settingsData) {
+      try {
+        const user = await User.findById(userId);
+        
+        if (!user) {
+          throw new Error('User not found');
+        }
+        
+        // Update user settings
+        if (settingsData.theme) user.settings.theme = settingsData.theme;
+        if (settingsData.currency) user.settings.currency = settingsData.currency;
+        
+        await user.save();
+        
+        return user.settings;
+      } catch (error) {
+        logger.error(`Error updating settings for user ${userId}:`, error);
+        throw error;
+      }
+    }
+  }
+  ```
+- **Endpoints**: 
+  - `PUT /api/auth/profile` - Update user profile information
+  - `PUT /api/auth/settings` - Update user application settings
+  - `PUT /api/auth/password` - Update user password
 
 ## Known Issues & Future Enhancements
 
