@@ -4,9 +4,16 @@
 
 A full-stack web application for managing cryptocurrency portfolios, tracking market prices, and analyzing investment performance. This project demonstrates enterprise software engineering principles and practices.
 
-### Solution Overview
+## Solution Overview
 
-The application is built using a modern tech stack with a focus on scalability, security, and user experience. It features a React-based frontend with Material UI, Node.js/Express backend, and MongoDB database with Mongoose ODM. The architecture follows a modular approach for maintainability and scalability.
+This Cryptocurrency Portfolio Manager is a full-stack web application that provides comprehensive tools for managing cryptocurrency investments. The application is built with a **clear separation between layers**:
+
+1. **React Frontend** - Modern, responsive UI built with React.js
+2. **Express Middleware Layer** - Request processing, validation, and security
+3. **Backend Services Layer** - Core business logic and data operations
+4. **MongoDB Backend** - Data persistence and storage
+
+The application allows users to track their cryptocurrency investments, view real-time market data, and analyze portfolio performance through an intuitive dashboard interface.
 
 ### Project Aim & Objectives
 
@@ -39,6 +46,51 @@ The application now includes all planned features:
 - **Responsive Design**: Mobile-friendly UI built with Material UI components
 
 ## Enterprise Considerations
+
+### Architecture
+
+The application follows a **distinct three-layer architecture** that ensures separation of concerns:
+
+#### Frontend Layer (React.js)
+- **Technology**: Built with React.js, React Router, and Context API
+- **Location**: `/frontend` directory
+- **Responsibility**: User interface, state management, and API communication
+- **Key Components**: 
+  - React components (`/frontend/src/components`)
+  - Pages (`/frontend/src/pages`)
+  - Context providers (`/frontend/src/context`)
+  - API service clients (`/frontend/src/services`)
+
+#### Middleware Layer (Express.js)
+- **Technology**: Express.js middleware functions
+- **Location**: `/backend/src/middleware` directory
+- **Responsibility**: Request processing, authentication, validation, error handling
+- **Key Components**:
+  - Authentication middleware (`/backend/src/middleware/auth.js`)
+  - Validation middleware (`/backend/src/middleware/validation.js`) 
+  - Error handling middleware (`/backend/src/middleware/error.js`)
+  - Request logging (`/backend/src/middleware/logger.js`)
+  - CORS and rate limiting
+
+#### Services Layer
+- **Technology**: Node.js service modules
+- **Location**: `/backend/src/services` directory
+- **Responsibility**: Business logic implementation, external API interactions
+- **Key Components**:
+  - Authentication services (`/backend/src/services/auth.js`)
+  - Market data services (`/backend/src/services/market.js`) 
+  - Portfolio calculation services (`/backend/src/services/portfolio.js`)
+
+#### Backend Layer (Data & API)
+- **Technology**: Express.js, Mongoose ODM, MongoDB
+- **Location**: `/backend/src/models`, `/backend/src/controllers`, `/backend/src/routes`
+- **Responsibility**: Data persistence, API endpoints, database operations
+- **Key Components**:
+  - MongoDB models (`/backend/src/models`)
+  - API controllers (`/backend/src/controllers`)
+  - Route definitions (`/backend/src/routes`)
+
+This clear separation ensures maintainability, testability, and scalability.
 
 ### Performance
 - Efficient MongoDB queries with proper schema design
@@ -763,99 +815,34 @@ The API is available at `http://localhost:3001/api` with the following main endp
    - Create customizable dashboards for personalized user experience
    - User-defined portfolio categories and tags
 
-## Architecture
-
-The application follows a three-tier architecture with clear separation of concerns:
-
-### Frontend (User Interface)
-```
-frontend/
-├── src/
-    ├── components/     # Reusable UI components
-    ├── pages/          # Main application views
-    │   ├── Login.js    # Authentication interface
-    │   ├── Market.js   # Cryptocurrency market view
-    │   ├── Portfolio.js # User's portfolio management
-    │   └── Settings.js # User preferences and settings
-    ├── services/       # API integration services
-    │   ├── api.js      # Base API client setup
-    │   ├── authService.js # Authentication API methods
-    │   ├── marketService.js # Market data API methods
-    │   └── portfolioService.js # Portfolio API methods
-    ├── context/        # React context providers
-    │   ├── AuthContext.js # User authentication management
-    │   ├── ThemeContext.js # Dark/light mode management
-    │   └── CurrencyContext.js # Currency preferences and formatting
-    ├── utils/          # Utility functions
-    └── App.js          # Main application component
-```
-
-### Backend / API
-
-The backend is built with Node.js and Express, following a modular architecture that separates concerns and enables scalable development.
-
-```
-backend/src/
-├── middleware/     # API middleware components
-│   ├── auth.js     # Authentication middleware
-│   ├── error.js    # Error handling middleware
-│   ├── validation.js # Request validation
-│   └── logger.js   # Request logging middleware
-├── routes/         # API endpoint definitions
-│   ├── auth.js     # Authentication routes
-│   ├── market.js   # Market data routes
-│   └── portfolio.js # Portfolio management routes
-├── models/         # Database models and schemas
-│   ├── User.js     # User schema with authentication
-│   └── Portfolio.js # Portfolio schema with holdings
-├── controllers/    # Route handler controllers
-│   ├── authController.js # Authentication logic
-│   ├── marketController.js # Market data logic
-│   └── portfolioController.js # Portfolio management logic
-├── services/       # Business logic services
-│   ├── authService.js # Authentication operations
-│   ├── marketService.js # Market data operations
-│   └── portfolioService.js # Portfolio calculations
-├── utils/          # Shared utilities
-│   ├── logger.js   # Logging service
-│   ├── apiError.js # Custom error classes
-│   └── validators.js # Input validation utilities
-├── config/         # Configuration management
-│   └── database.js # Database connection setup
-├── app.js          # Express application setup
-└── index.js        # Server initialization
-```
-
 ## Project Structure
 
 ```
 crypto-portfolio/
-├── frontend/
-│   ├── public/
+├── frontend/                 # React.js frontend application
+│   ├── public/               # Static files
+│   ├── src/                  # Source code
+│   │   ├── components/       # Reusable UI components
+│   │   ├── pages/            # Page components
+│   │   ├── context/          # React context providers
+│   │   ├── services/         # API service clients
+│   │   ├── utils/            # Utility functions
+│   │   └── App.js            # Main application component
+│   └── package.json          # Frontend dependencies
+│
+├── backend/                  # Node.js backend application
 │   ├── src/
-│   │   ├── components/
-│   │   ├── context/
-│   │   │   ├── AuthContext.js
-│   │   │   ├── ThemeContext.js
-│   │   │   └── CurrencyContext.js
-│   │   ├── pages/
-│   │   ├── services/
-│   │   ├── utils/
-│   │   └── App.js
-│   └── package.json
-├── backend/
-│   ├── logs/
-│   ├── src/
-│   │   ├── controllers/
-│   │   ├── middleware/
-│   │   ├── models/
-│   │   ├── routes/
-│   │   ├── services/
-│   │   ├── utils/
-│   │   ├── app.js
-│   │   └── index.js
-│   └── package.json
-└── README.md
+│   │   ├── middleware/       # Express middleware functions
+│   │   ├── services/         # Business logic services
+│   │   ├── controllers/      # Route controllers
+│   │   ├── models/           # MongoDB models
+│   │   ├── routes/           # API routes
+│   │   ├── utils/            # Utility functions
+│   │   ├── app.js            # Express application setup
+│   │   └── index.js          # Application entry point
+│   └── package.json          # Backend dependencies
+│
+└── README.md                 # Project documentation
 ```
 
 ## Contributing
